@@ -2,8 +2,19 @@ import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react-swc";
 import path from "path";
 
+/**
+ * Public base path.
+ *
+ * Cloudflare Pages serves the app at the site ROOT, so the default is "/".
+ * GitHub Pages serves project sites from a subpath, so the Pages workflow
+ * sets VITE_BASE_PATH=/khub-frontend/. Hardcoding either one breaks the
+ * other: a page whose HTML asks for /khub-frontend/assets/... under
+ * Cloudflare 404s on the bundle, and React never mounts — a blank page.
+ */
+const base = process.env.VITE_BASE_PATH ?? "/";
+
 export default defineConfig({
-  base: "/khub-frontend/",
+  base,
   plugins: [react()],
 
   resolve: {

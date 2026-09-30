@@ -33,6 +33,10 @@ jobs:
           # explicit gh-pages base via env. Keep the value in repo settings
           # when a preview domain is needed; default hard-codes the prod API.
           VITE_API_BASE_URL: https://api.khub.com.ng
+          # GitHub Pages serves project sites from a subpath. Cloudflare
+          # Pages serves at the root and uses the default "/", so setting
+          # this here is what keeps the two hosts correct.
+          VITE_BASE_PATH: /khub-frontend/
       - uses: actions/configure-pages@v4
       - uses: actions/upload-pages-artifact@v3
         with:

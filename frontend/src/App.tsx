@@ -14,6 +14,15 @@ import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { Toaster } from "sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 
+/**
+ * Router mount path, derived from the build base (vite `base`, exposed as
+ * import.meta.env.BASE_URL). "/" on Cloudflare Pages, "/khub-frontend" on
+ * GitHub Pages. react-router wants no trailing slash, and no basename at all
+ * for the root, so normalise both cases here rather than hardcoding one and
+ * breaking the other host.
+ */
+const ROUTER_BASENAME = (import.meta.env.BASE_URL || "/").replace(/\/+$/, "");
+
 // Layout Components
 import LoadingScreen from "@/components/LoadingScreen";
 import Layout from "@/components/Layout";
@@ -183,7 +192,7 @@ const App = () => {
                   {appLoading && <LoadingScreen key="loader" />}
                 </AnimatePresence>
 
-                <BrowserRouter basename="/khub-frontend">
+                <BrowserRouter basename={ROUTER_BASENAME}>
                   <Layout>
                     <AppRoutes />
                   </Layout>

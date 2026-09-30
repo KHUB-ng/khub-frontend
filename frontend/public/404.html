@@ -1,15 +1,36 @@
 <!doctype html>
-<html>
+<html lang="en">
   <head>
     <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>KHUB</title>
     <script>
-      // GH Pages + BrowserRouter SPA fallback: store the intended path and
-      // redirect to the app root at /khub-frontend/ — the app restores it
-      // from sessionStorage on boot (see index.html script).
-      sessionStorage.redirect = location.href;
+      /*
+       * SPA fallback for static hosts.
+       *
+       * Deep links like /shop/abc have no file behind them, so the host serves
+       * this 404 instead of the app. We stash the intended URL and bounce to
+       * the app root; index.html restores the path from sessionStorage, so
+       * the user lands where they meant to go instead of on the home page.
+       *
+       * The app root differs per host: Cloudflare Pages serves it at "/",
+       * GitHub Pages project sites at "/<repo>/". Derive it here rather than
+       * hardcoding, or one host 404-loops.
+       */
+      (function () {
+        var base =
+          location.hostname.indexOf("github.io") !== -1
+            ? "/khub-frontend/"
+            : "/";
+        try {
+          sessionStorage.redirect = location.href;
+        } catch (e) {
+          /* private mode: fall through to a plain redirect */
+        }
+        location.replace(base);
+      })();
     </script>
-    <meta http-equiv="refresh" content="0;URL='/khub-frontend/'" />
+    <meta http-equiv="refresh" content="0" />
   </head>
   <body></body>
 </html>
