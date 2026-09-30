@@ -37,6 +37,8 @@ jobs:
           # Pages serves at the root and uses the default "/", so setting
           # this here is what keeps the two hosts correct.
           VITE_BASE_PATH: /khub-frontend/
+          # Public Google client id (ID-token flow). Not the secret.
+          VITE_GOOGLE_CLIENT_ID: ${{ vars.VITE_GOOGLE_CLIENT_ID }}
       - uses: actions/configure-pages@v4
       - uses: actions/upload-pages-artifact@v3
         with:
