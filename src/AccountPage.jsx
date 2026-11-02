@@ -4,7 +4,7 @@ import { ArrowRight, ArrowLeft, Eye, EyeOff, CheckCircle2 } from 'lucide-react';
 import styles from './AccountPage.module.css';
 import hero from './assets/hero.jpg';
 
-const roles = ['Buyer', 'Seller', 'Provider', 'Driver', 'Job poster', 'Job seeker'];
+const roles = ['User', 'Seller', 'Service Provider', 'Driver / Dispatch Rider', 'Job poster', 'Rental Agent'];
 const STORAGE_KEY = 'khub_demo_accounts';
 
 const readAccounts = () => {

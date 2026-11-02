@@ -8,7 +8,45 @@ const jobs = [
   { id:'KH-JB-3104', title:'Customer support associate', company:'Delta Connect', location:'Port Harcourt', arrangement:'On-site', salaryMin:180000, salaryMax:240000, salary:'₦180,000–₦240,000 / month', type:'Full-time', level:'Entry level', note:'Shift allowance · Paid training', posted:'10 Oct', closes:'25 Oct 2026', verified:false, category:'Operations' },
   { id:'KH-JB-3118', title:'Frontend engineer', company:'Cedar Digital', location:'Lagos', arrangement:'Remote', salaryMin:600000, salaryMax:850000, salary:'₦600,000–₦850,000 / month', type:'Contract', level:'6 months · 4+ years', note:'React / TypeScript · Equipment stipend', posted:'10 Oct', closes:'25 Oct 2026', verified:true, category:'Technology' },
 ];
-
+const nigerianStates = [
+  'Abia',
+  'Adamawa',
+  'Akwa Ibom',
+  'Anambra',
+  'Bauchi',
+  'Bayelsa',
+  'Benue',
+  'Borno',
+  'Cross River',
+  'Delta',
+  'Ebonyi',
+  'Edo',
+  'Ekiti',
+  'Enugu',
+  'Gombe',
+  'Imo',
+  'Jigawa',
+  'Kaduna',
+  'Kano',
+  'Katsina',
+  'Kebbi',
+  'Kogi',
+  'Kwara',
+  'Lagos',
+  'Nasarawa',
+  'Niger',
+  'Ogun',
+  'Ondo',
+  'Osun',
+  'Oyo',
+  'Plateau',
+  'Rivers',
+  'Sokoto',
+  'Taraba',
+  'Yobe',
+  'Zamfara',
+  'FCT'
+];
 export default function JobListingsPage({ onViewJob, savedJobs = [], onToggleSave }) {
   const [keyword, setKeyword] = useState('');
   const [location, setLocation] = useState('Nigeria · All cities');
@@ -62,7 +100,22 @@ export default function JobListingsPage({ onViewJob, savedJobs = [], onToggleSav
       </header>
       <div className={styles.searchRow}>
         <label className={styles.searchField}><span>Role or keyword</span><input value={keyword} onChange={e=>setKeyword(e.target.value)} placeholder="Design, operations, engineering..." aria-label="Role or keyword" /></label>
-        <label className={styles.selectField}><span>Location</span><select value={location} onChange={e=>setLocation(e.target.value)} aria-label="Location"><option>Nigeria · All cities</option><option>Lagos</option><option>Abuja</option><option>Port Harcourt</option></select><ChevronDown size={13}/></label>
+        <label className={styles.selectField}>
+  <span>Location</span>
+      <select
+        value={location}
+        onChange={e => setLocation(e.target.value)}
+        aria-label="Location"
+      >
+        <option value="Nigeria · All cities">All states in Nigeria</option>
+        {nigerianStates.map(state => (
+          <option key={state} value={state}>
+            {state === 'FCT' ? 'Federal Capital Territory (FCT)' : state}
+          </option>
+        ))}
+      </select>
+      <ChevronDown size={13}/>
+    </label>
       </div>
       <nav className={styles.tabs} aria-label="Job categories">{['All jobs','Design','Technology','Operations',`Saved (${saved.length})`].map((item,i)=>{const value=i===4?'Saved':item;return <button key={item} className={tab===value?styles.activeTab:''} onClick={()=>setTab(value)}>{item}</button>})}</nav>
       <div className={styles.content}>

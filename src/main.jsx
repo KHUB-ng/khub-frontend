@@ -1,4 +1,4 @@
-
+import logo from './assets/khub_green-removebg-preview.png';
 import React, { useMemo, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import {
@@ -378,6 +378,12 @@ function App() {
     }
   };
 
+  const handleLogout = () => {
+    setCurrentUser(null);
+    setPage('account');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
   // Handles the seller listing button in the navigation header.
   const handleList = () => {
     navigate('seller-listing');
@@ -548,16 +554,19 @@ function App() {
       <CustomerDashboard
         user={currentUser}
         onNavigate={navigate}
+        onLogout={handleLogout}
         />
       ) : page === 'dashboard' ? (
         <CustomerDashboard
           user={currentUser}
           onNavigate={navigate}
+          onLogout={handleLogout}
         />
       ) : page === 'driver-dashboard' ? (
         <DriverDashboard
           user={currentUser}
           onNavigate={navigate}
+          onLogout={handleLogout}
         />
       ) : page === 'ride-tracking' ? (
         <RideTrackingPage
@@ -575,17 +584,20 @@ function App() {
         <ServiceProviderDashboard
           user={currentUser}
           onNavigate={navigate}
+          onLogout={handleLogout}
         />
       ) : page === 'seller-dashboard' ? (
         <SellerDashboard
           user={currentUser}
           onNavigate={navigate}
+          onLogout={handleLogout}
         />
     
       ) : page === 'job-poster-dashboard' ? (
         <JobPosterDashboard
           user={currentUser}
           onNavigate={navigate}
+          onLogout={handleLogout}
         />
       ) : page === 'job-listings' ? (
         <JobListingsPage
@@ -729,12 +741,32 @@ function App() {
           onSupport={() => navigate('support')}
           onNavigate={navigate}
         />
+      
       ) : page === 'orders' ? (
         <OrdersPage
           onBack={() => navigate('orders-bookings')}
           onSupport={() => navigate('support')}
         />
+      ) : page === 'messages' ? (
+        <ChatPage
+          user={currentUser}
+          onNavigate={navigate}
+          onBack={() =>
+            navigate(
+              currentUser?.role === 'Seller'
+                ? 'seller-dashboard'
+                : currentUser?.role === 'Driver'
+                  ? 'driver-dashboard'
+                  : currentUser?.role === 'Provider'
+                    ? 'provider-dashboard'
+                    : currentUser?.role === 'Job poster'
+                      ? 'job-poster-dashboard'
+                      : 'dashboard'
+            )
+          }
+        />
       ) : (
+
         <>
           <main id="top">
             <section className={styles.hero} id="discover">
@@ -742,6 +774,7 @@ function App() {
                 <span className={styles.eyebrow}>
                   Made for your everyday
                 </span>
+              
 
                 <h1>
                   A world of
@@ -854,15 +887,19 @@ function App() {
                       }
 
                       // NEW: Services category opens its own page.
-                      if (name === 'Services') {
+                     if (name === 'Services') {
                         navigate('services');
+                        return;
+                      }
+
+                      if (name === 'Rides' || name === 'Delivery') {
+                        navigate('ride-booking');
                         return;
                       }
 
                       setActiveCategory(
                         activeCategory === name ? 'All' : name
                       );
-
                       goTo('finds');
                     }}
                   >
@@ -1319,78 +1356,357 @@ function App() {
             </section>
           </main>
 
-          <footer className={styles.footer}>
-            <div className={styles.footerTop}>
-              <div className={styles.footerBrand}>
-                <a className={styles.logo} href="#top">
-                  KHUB
-                </a>
-                <p>Your everyday, connected.</p>
-              </div>
+      
+  <footer className={styles.footer} aria-label="KHUB website footer">
+    <div className={styles.footerSafety}>
+      <ShieldCheck size={30} aria-hidden="true" />
+      <div>
+        <h2>NEVER PAY OUTSIDE KHUB!</h2>
+        <p>
+          Always make payments through the official KHUB platform. Payments
+          made directly to sellers, vendors, drivers or other users outside
+          KHUB are not protected by KHUB's secure payment and escrow system
+          and may not be recoverable. Keep your transactions within KHUB to
+          enjoy applicable transaction protection and support.
+        </p>
+      </div>
+    </div>
 
-              <div>
-                <h4>Explore</h4>
-                <button onClick={() => navigate('shop')}>
-                  Shop
-                </button>
-                <button onClick={() => navigate('rentals')}>
-                  Rentals
-                </button>
-                <button onClick={() => navigate('services')}>
-                  Services
-                </button>
-              </div>
+    <div className={styles.footerIntro}>
+      <a
+        className={styles.logo}
+        href="#top"
+        aria-label="KHUB home"
+        onClick={(e) => {
+          e.preventDefault();
+          navigate('home');
+        }}
+      >
+        <img src={logo} alt="KHUB brand logo" />
+      </a>
 
-              <div>
-                <h4>For business</h4>
-                <button
-                  onClick={() =>
+      <p className={styles.footerTagline}>Your No. 1 Business Hub.</p>
+      <p>
+        KHUB is your all-in-one business hub, connecting customers, businesses,
+        service providers, job seekers, property owners, drivers and logistics
+        providers on one platform. Shop, sell, rent, find jobs, offer services,
+        book rides and access delivery solutions with KHUB.
+      </p>
+    </div>
+
+    <div className={styles.footerColumns}>
+      {[
+        {
+          title: 'EXPLORE KHUB',
+          items: [
+            ['Home', 'home'],
+            ['Shop Products', 'shop'],
+            ['Categories', 'categories'],
+            ['Services', 'services'],
+            ['Jobs & Careers', 'jobs'],
+            ['Rentals', 'rentals'],
+            ['Rides', 'ride-booking'],
+            ['Logistics & Delivery', 'ride-booking'],
+            ['Featured Listings', 'finds'],
+            ['New Arrivals', 'finds'],
+            ['Special Offers', 'finds'],
+          ],
+        },
+        {
+          title: 'FOR CUSTOMERS',
+          items: [
+            ['Create Account', 'account'],
+            ['My Profile', 'settings'],
+            ['My Orders', 'orders-bookings'],
+            ['Track Orders', 'orders-bookings'],
+            ['My Wishlist', 'account'],
+            ['Shopping Cart', 'cart'],
+            ['My Bookings', 'orders-bookings'],
+            ['My Applications', 'job-application'],
+            ['My Messages', 'messages'],
+            ['My Wallet', 'wallet'],
+            ['Transaction History', 'wallet'],
+          ],
+        },
+        {
+          title: 'FOR BUSINESSES & PARTNERS',
+          items: [
+            ['Become a Seller', 'seller-listing'],
+            ['Register Your Business', 'account'],
+            ['Become a Service Provider', 'provider-dashboard'],
+            ['Post a Job', 'job-poster-dashboard'],
+            ['Become a Landlord / Property Owner', 'rentals'],
+            ['List Rental Spaces', 'rentals'],
+            ['Become a Driver', 'driver-dashboard'],
+            ['Become a Dispatch Rider', 'driver-dashboard'],
+            ['Become a Logistics Partner', 'support'],
+            ['Subscription Plans', 'subscription'],
+            ['Referral Programme', 'referrals'],
+          ],
+        },
+        {
+          title: 'HELP & SUPPORT',
+          items: [
+            ['Help Centre', 'support'],
+            ['FAQs', 'support'],
+            ['Contact Customer Care', 'support'],
+            ['How KHUB Works', 'discover'],
+            ['How to Buy', 'shop'],
+            ['How to Sell', 'seller-listing'],
+            ['Payments & Withdrawals', 'wallet'],
+            ['Orders & Deliveries', 'orders-bookings'],
+            ['Returns & Refunds', 'support'],
+            ['Booking Support', 'support'],
+            ['Report a Problem', 'support'],
+            ['Report Fraud', 'support'],
+          ],
+        },
+        {
+          title: 'SAFETY, TRUST & LEGAL',
+          items: [
+            ['Buyer Protection Policy', 'support'],
+            ['Seller Protection Policy', 'support'],
+            ['Secure Payments & Escrow', 'support'],
+            ['Terms & Conditions', 'legal'],
+            ['Privacy Policy', 'legal'],
+            ['Refund & Return Policy', 'legal'],
+            ['Cancellation Policy', 'legal'],
+            ['Delivery Policy', 'legal'],
+            ['Rental Terms', 'legal'],
+            ['Job Posting Policy', 'legal'],
+            ['Service Provider Policy', 'legal'],
+            ['Prohibited Items & Activities', 'legal'],
+            ['Dispute Resolution', 'support'],
+            ['Account Suspension & Appeals', 'support'],
+          ],
+        },
+        {
+          title: 'ABOUT KHUB',
+          items: [
+            ['About Us', 'discover'],
+            ['Mission & Vision', 'discover'],
+            ['Why Choose KHUB?', 'discover'],
+            ['Our Services', 'services'],
+            ['Careers', 'jobs'],
+            ['Become a Partner', 'support'],
+            ['Affiliate Programme', 'referrals'],
+            ['Advertise With Us', 'support'],
+            ['Business Enquiries', 'support'],
+            ['Contact Us', 'support'],
+          ],
+        },
+      ].map((group) => (
+        <details className={styles.footerGroup} key={group.title}>
+          <summary>{group.title}</summary>
+          <div className={styles.footerLinkList}>
+            {group.items.map(([label, destination]) => (
+              <button
+                key={label}
+                type="button"
+                onClick={() => {
+                  if (destination === 'subscription') {
                     openModal(
-                      'Sell on KHUB',
-                      'Reach customers looking for your products and services.',
-                      'Start selling'
-                    )
-                  }
-                >
-                  Sell on KHUB · Offer services
-                </button>
-                <button onClick={() => goTo('jobs')}>
-                  Post a job · Drive with us
-                </button>
-              </div>
-
-              <div>
-                <h4>Here to help</h4>
-                <button
-                  onClick={() =>
-                    openModal(
-                      'Help centre',
-                      'Tell us what you need help with and our support team can guide you.',
+                      'KHUB subscription plans',
+                      'Free: basic access. Verified: ₦5,000/month. Premium: ₦15,000/month. Subscription benefits and payment are not configured yet.',
                       'Contact support'
-                    )
+                    );
+                    return;
                   }
-                >
-                  Help centre · Trust & safety
-                </button>
-                <button
-                  onClick={() =>
-                    openModal(
-                      'Privacy and terms',
-                      'Review marketplace privacy, terms and accessibility information.',
-                      'Continue'
-                    )
-                  }
-                >
-                  Privacy · Terms · Accessibility
-                </button>
-              </div>
-            </div>
 
-            <div className={styles.footerBottom}>
-              © KHUB · Nigeria · English · NGN · All business data shown in
-              this design is illustrative.
-            </div>
-          </footer>
+                  if (destination === 'legal') {
+                    openModal(
+                      label,
+                      'This policy page has not been created yet. Contact KHUB support for current policy information.',
+                      'Contact support'
+                    );
+                    return;
+                  }
+
+                  if (['categories', 'finds', 'discover'].includes(destination)) {
+                    navigate('home');
+                    window.setTimeout(() => {
+                      document
+                        .getElementById(
+                          destination === 'categories'
+                            ? 'categories'
+                            : destination === 'finds'
+                              ? 'finds'
+                              : 'discover'
+                        )
+                        ?.scrollIntoView({ behavior: 'smooth' });
+                    }, 80);
+                    return;
+                  }
+
+                  navigate(destination);
+                }}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        </details>
+      ))}
+    </div>
+
+    <div className={styles.footerPlans}>
+      <div>
+        <span className={styles.footerEyebrow}>GROW WITH KHUB</span>
+        <h2>Find the right plan for your next step.</h2>
+        <p>
+          Choose the access level that suits you. Plan benefits and online
+          subscriptions are not yet connected in this version.
+        </p>
+      </div>
+
+      <div className={styles.footerPlanCards}>
+        <article>
+          <h3>Free</h3>
+          <strong>Basic access</strong>
+          <p>Get started with KHUB.</p>
+        </article>
+        <article>
+          <h3>Verified</h3>
+          <strong>
+            ₦5,000 <small>/ month</small>
+          </strong>
+          <p>Plan details to be confirmed.</p>
+        </article>
+        <article>
+          <h3>Premium</h3>
+          <strong>
+            ₦15,000 <small>/ month</small>
+          </strong>
+          <p>Plan details to be confirmed.</p>
+        </article>
+      </div>
+
+      <button
+        className={styles.footerPlanCta}
+        type="button"
+        onClick={() =>
+          openModal(
+            'KHUB subscription plans',
+            'Subscriptions are not yet connected to a subscription page or payment service. Please contact support for information.',
+            'Contact support'
+          )
+        }
+      >
+        EXPLORE SUBSCRIPTION PLANS <ArrowRight size={15} />
+      </button>
+    </div>
+
+    <div className={styles.footerContact}>
+      <div>
+        <h2>Customer support</h2>
+        <p><MapPin size={16} /> Kano State, Nigeria</p>
+        <p>
+          <Phone size={16} />
+          <a href="tel:+2347065036761">+234 706 503 6761</a>
+        </p>
+        <p>
+          <Mail size={16} />
+          <a href="mailto:support@khub.com.ng">support@khub.com.ng</a>
+        </p>
+        <p>
+          <ArrowUpRight size={16} />
+          <a href="https://khub.com.ng" target="_blank" rel="noreferrer">
+            khub.com.ng
+          </a>
+        </p>
+      </div>
+
+      <div>
+        <h2>Payments & trust</h2>
+        <p>
+          Use only payment methods displayed during KHUB checkout. Available
+          payment providers and escrow coverage depend on the live checkout
+          configuration. Never share your PIN or one-time password.
+        </p>
+      </div>
+
+      <div>
+        <h2>Stay connected with KHUB!</h2>
+        <p>
+          Get updates on new products, business opportunities, job vacancies,
+          special offers and exciting platform features.
+        </p>
+
+        <form
+          className={styles.footerNewsletter}
+          onSubmit={(e) => {
+            e.preventDefault();
+            notify(
+              'Newsletter sign-up is not connected yet. No email was sent.'
+            );
+          }}
+        >
+          <label className={styles.srOnly} htmlFor="khub-newsletter-email">
+            Email address
+          </label>
+          <input
+            id="khub-newsletter-email"
+            type="email"
+            required
+            placeholder="Enter your email address"
+          />
+          <button type="submit">Subscribe</button>
+        </form>
+
+        <small>
+          By subscribing, you agree to receive KHUB updates. Unsubscribe
+          options will be provided when newsletter service is connected.
+        </small>
+      </div>
+    </div>
+
+    <div className={styles.footerBottom}>
+      <span>© 2026 KHUB. All Rights Reserved.</span>
+      <div>
+        <button
+          onClick={() =>
+            openModal(
+              'Terms & Conditions',
+              'This policy page has not been created yet. Contact support for current terms.',
+              'Contact support'
+            )
+          }
+        >
+          Terms & Conditions
+        </button>
+        <button
+          onClick={() =>
+            openModal(
+              'Privacy Policy',
+              'This policy page has not been created yet. Contact support for current privacy information.',
+              'Contact support'
+            )
+          }
+        >
+          Privacy Policy
+        </button>
+        <button
+          onClick={() =>
+            openModal(
+              'Refund Policy',
+              'This policy page has not been created yet. Contact support for current refund information.',
+              'Contact support'
+            )
+          }
+        >
+          Refund Policy
+        </button>
+        <button
+          onClick={() =>
+            notify('Cookie preferences are not configured in this version.')
+          }
+        >
+          Cookie Preferences
+        </button>
+      </div>
+    </div>
+  </footer>
+
 
           {toast && (
             <div className={styles.toast}>

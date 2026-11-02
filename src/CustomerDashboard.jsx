@@ -15,6 +15,7 @@ import {
   ChevronRight,
   ArrowUpRight,
   ShoppingCart,
+  LogOut,
 } from 'lucide-react';
 
 import styles from './CustomerDashboard.module.css';
@@ -38,6 +39,7 @@ export default function CustomerDashboard({
   user = {},
   onNavigate = () => {},
   cartCount = 0,
+  onLogout = () => onNavigate('account'),
 }) {
   const [active, setActive] = useState('dashboard');
 
@@ -132,6 +134,7 @@ export default function CustomerDashboard({
       </aside>
 
       <main className={styles.content}>
+        <button type="button" className={styles.dashboardLogout} onClick={onLogout}><LogOut size={16} /> Log out</button>
         {active === 'dashboard' ? (
           <>
             <div className={styles.welcome}>

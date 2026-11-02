@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Circle, CalendarDays, BriefcaseBusiness, Clock3, Wallet, Image, Star, MessageCircle, LifeBuoy, Settings, Menu, X, CheckCircle2, Bell } from 'lucide-react';
+import { Circle, CalendarDays, BriefcaseBusiness, Clock3, Wallet, Image, Star, MessageCircle, LifeBuoy, Settings, Menu, X, CheckCircle2, Bell, LogOut } from 'lucide-react';
 import styles from './ServiceProviderDashboard.module.css';
 
 const menuItems = [
@@ -9,7 +9,7 @@ const menuItems = [
   { label: 'Support', icon: LifeBuoy }, { label: 'Settings', icon: Settings },
 ];
 
-export default function ServiceProviderDashboard({ user = {}, onNavigate = () => {} }) {
+export default function ServiceProviderDashboard({ user = {}, onNavigate = () => {}, onLogout = () => onNavigate('account') }) {
   const [active, setActive] = useState('Overview');
   const [mobileNav, setMobileNav] = useState(false);
   const [accepting, setAccepting] = useState(true);
@@ -34,6 +34,7 @@ export default function ServiceProviderDashboard({ user = {}, onNavigate = () =>
       {menuItems.map(({label, icon: Icon}) => <button key={label} className={`${styles.navItem} ${active === label ? styles.navActive : ''}`} onClick={() => selectMenu(label)}><Icon size={13} strokeWidth={1.8}/><span>{label}</span></button>)}
     </aside>
     <main className={styles.main}>
+      <button type="button" className={styles.dashboardLogout} onClick={onLogout}><LogOut size={16}/> Log out</button>
       <header className={styles.heading}><h1>A little structure. More good work.</h1><p>08 Role workspaces / Service-provider dashboard</p><p>{provider} · Identity verified · Service-provider workspace</p></header>
       <div className={styles.metrics}>
         <section className={styles.metric}><strong>4</strong><span>Active projects</span><small>2 deliveries this week</small></section>

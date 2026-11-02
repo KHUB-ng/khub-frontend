@@ -16,3 +16,28 @@
   font-weight: 700;
 }
 
+
+
+
+.dashboardLogout {
+  position: sticky;
+  top: 10px;
+  z-index: 20;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  float: right;
+  margin: 0 0 14px 14px;
+  padding: 10px 15px;
+  border: 1px solid #c9d9d2;
+  border-radius: 999px;
+  background: #fff;
+  color: #8b2c2c;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(18, 63, 50, .08);
+}
+.dashboardLogout:hover { background: #fff5f5; border-color: #d9aaaa; }

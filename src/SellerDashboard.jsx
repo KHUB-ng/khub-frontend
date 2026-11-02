@@ -11,7 +11,7 @@ const inventory = [
   { name: 'Walnut side table', sku: 'SN-TB-02', stock: 1, visibility: '! Low stock', price: '₦48,000', action: 'Restock' },
   { name: 'Reading lamp', sku: 'SN-LP-03', stock: 2, visibility: 'Advertised', price: '₦32,000', action: 'Edit promotion' },
 ];
-export default function SellerDashboard({ user, onNavigate }) {
+export default function SellerDashboard({ user, onNavigate, onLogout = () => onNavigate?.('account') }) {
  const [stock,setStock] = useState(inventory.map(x=>x.stock));
  const [notice,setNotice] = useState('');
  const [showStock,setShowStock] = useState(false);
@@ -24,6 +24,7 @@ export default function SellerDashboard({ user, onNavigate }) {
  return <div className={styles.shell}>
   <aside className={styles.sidebar}>{nav.map((item,i)=><button key={item} onClick={()=>handleNav(item)} className={tab===item?styles.activeNav:styles.navItem}>{i===0?'◉ ':''}{item}</button>)}</aside>
   <main className={styles.main}>
+   <button type="button" className={styles.dashboardLogout} onClick={onLogout}>↪ Log out</button>
    <header className={styles.heading}><h1>Make room for good business.</h1><p>08 Role workspaces / Seller dashboard<br/>{user?.storeName || 'Studio Nook'} · Lekki, Lagos · Seller workspace · 11 Oct 2026</p></header>
    <section className={styles.stats}>{[['₦1.84m','Revenue · Oct','Gross paid sales · +12%'],['8','To fulfil','3 dispatches due today'],['24','Live listings','2 low-stock items'],['₦145,000','Pending payout','Held until delivery accepted']].map(([v,l,s])=><article className={styles.stat} key={l}><strong>{v}</strong><span>{l}</span><small>{s}</small></article>)}</section>
    <div className={styles.columns}><div className={styles.left}>
