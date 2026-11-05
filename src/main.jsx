@@ -1,3 +1,4 @@
+
 import logo from './assets/khub_green-removebg-preview.png';
 import React, { useMemo, useState } from 'react';
 import { createRoot } from 'react-dom/client';
@@ -21,6 +22,10 @@ import {
   Phone,
   ArrowRight,
   SlidersHorizontal,
+  Star,
+  ArrowLeft,
+  Plus,
+  Minus,
 } from 'lucide-react';
 
 import styles from './styles.module.css';
@@ -62,9 +67,10 @@ import CartPage from './CartPage.jsx';
 import SellerListingForm from './SellerListingForm.jsx';
 import ShopPage from './ShopPage.jsx';
 import RentalsPage from './RentalsPage.jsx';
-
-// NEW: Dedicated service-provider listing page
 import ServicesPage from './ServicesPage.jsx';
+import FooterContentPage, { footerRoutes } from './FooterContentPage.jsx';
+import AboutUsPage from './AboutUsPage.jsx';
+
 
 const products = [
   {
@@ -72,36 +78,88 @@ const products = [
     name: 'The Lekki lounge chair',
     category: 'Advertised · Lekki, Lagos · New',
     seller: 'Verified seller',
+    sellerName: 'Studio Nook',
     price: '₦145,000',
+    numericPrice: 145000,
     image: chair,
     kind: 'Shop',
+    location: 'Lekki, Lagos',
+    condition: 'Brand new',
+    availability: 'Available',
+    description:
+      'Bring comfort and character into your living space with this beautifully styled lounge chair. Its contemporary design makes it suitable for living rooms, reading corners and modern office spaces.',
+    features: [
+      'Contemporary lounge design',
+      'Suitable for living rooms and office spaces',
+      'Locally listed by a verified seller',
+      'Delivery options available at checkout',
+    ],
   },
   {
     id: 2,
     name: 'Wireless headphones',
     category: 'Identity verified · Ikeja, Lagos · New',
-    seller: '',
+    seller: 'Identity verified seller',
+    sellerName: 'Sound House',
     price: '₦58,000',
+    numericPrice: 58000,
     image: headphones,
     kind: 'Shop',
+    location: 'Ikeja, Lagos',
+    condition: 'Brand new',
+    availability: 'Available',
+    description:
+      'Enjoy your favourite audio with these wireless headphones. A convenient everyday accessory for work, entertainment, study and travel.',
+    features: [
+      'Wireless headphone design',
+      'Suitable for everyday listening',
+      'New listing',
+      'Delivery options available at checkout',
+    ],
   },
   {
     id: 3,
     name: 'Walnut bedside lamp',
     category: 'Local maker · Wuse, Abuja · Handmade',
-    seller: '',
+    seller: 'Local maker',
+    sellerName: 'Wuse Home Studio',
     price: '₦32,000',
+    numericPrice: 32000,
     image: lamp,
     kind: 'Shop',
+    location: 'Wuse, Abuja',
+    condition: 'Handmade',
+    availability: 'Available',
+    description:
+      'Add a warm finishing touch to your bedroom or living area with this walnut bedside lamp. Its simple styling makes it an attractive addition to contemporary interiors.',
+    features: [
+      'Walnut-inspired finish',
+      'Handmade listing',
+      'Suitable for bedside and living spaces',
+      'Delivery options available at checkout',
+    ],
   },
   {
     id: 4,
     name: 'Camera kit for rent',
     category: 'Rental · Yaba, Lagos · Dates available',
-    seller: '',
+    seller: 'Rental provider',
+    sellerName: 'Yaba Camera Rentals',
     price: '₦18,000 / day',
+    numericPrice: 18000,
     image: camera,
     kind: 'Rent',
+    location: 'Yaba, Lagos',
+    condition: 'Rental equipment',
+    availability: 'Dates available',
+    description:
+      'Need camera equipment for a project, event or creative production? This camera kit is listed for short-term rental. Contact the provider to confirm the equipment details and available dates before booking.',
+    features: [
+      'Camera kit available for rental',
+      'Daily rental pricing',
+      'Availability subject to confirmation',
+      'Confirm rental dates before booking',
+    ],
   },
 ];
 
@@ -176,6 +234,9 @@ function App() {
   const [modal, setModal] = useState(null);
   const [toast, setToast] = useState('');
   const [submitted, setSubmitted] = useState(false);
+
+  // Stores the product currently being viewed.
+  const [selectedProduct, setSelectedProduct] = useState(null);
 
   const [paymentDetails, setPaymentDetails] = useState({
     method: 'Bank transfer',
@@ -264,6 +325,64 @@ function App() {
         : [...prev, id]
     );
 
+  // Opens the dedicated detail page for a selected product.
+  const openProduct = (product) => {
+    setSelectedProduct(product);
+    setPage('product-detail');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  // Adds a product to the cart, increasing quantity if it already exists.
+  const addProductToCart = (product, showNotification = true) => {
+    setCartItems((old) => {
+      const existing = old.find(
+        (item) => item.id === product.id
+      );
+
+      if (existing) {
+        return old.map((item) =>
+          item.id === product.id
+            ? {
+                ...item,
+                qty: item.qty + 1,
+              }
+            : item
+        );
+      }
+
+      return [
+        ...old,
+        {
+          id: product.id,
+          name: product.name,
+          seller: product.sellerName || product.seller || 'KHUB seller',
+          price: product.numericPrice,
+          image: product.image,
+          qty: 1,
+          saved: false,
+        },
+      ];
+    });
+
+    if (showNotification) {
+      notify(`${product.name} added to your cart`);
+    }
+  };
+
+  // Buy Now takes the selected product to the delivery process.
+  const buyProductNow = (product) => {
+    setSelectedProduct(product);
+
+    if (product.kind === 'Rent') {
+      notify('Please confirm rental dates with the provider before booking.');
+      navigate('rentals');
+      return;
+    }
+
+    addProductToCart(product, false);
+    navigate('delivery-details');
+  };
+
   const onSubmit = (e) => {
     e.preventDefault();
     setSubmitted(true);
@@ -275,13 +394,12 @@ function App() {
     if (!query) return;
 
     const normalized = query.toLowerCase();
+
     if (/\b(ride|rides|taxi|driver|pickup|drop.?off|delivery|deliveries|parcel|logistics)\b/.test(normalized)) {
       navigate('ride-booking');
       return;
     }
 
-    // Discover is KHUB's cross-category results view (products, rentals,
-    // services and jobs), so general searches start there.
     setGlobalSearch(query);
     setPage('discover');
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -292,6 +410,13 @@ function App() {
 
     if (destination === 'home') {
       setPage('home');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
+
+    // Opens dedicated standalone footer pages.
+    if (destination.startsWith('footer-')) {
+      setPage(destination);
       window.scrollTo({ top: 0, behavior: 'smooth' });
       return;
     }
@@ -320,7 +445,6 @@ function App() {
       return;
     }
 
-    // NEW: Open the dedicated service-provider listing page.
     if (
       destination === 'services' ||
       destination === 'service'
@@ -330,44 +454,45 @@ function App() {
       return;
     }
 
-   if (destination === 'city') {
-  setPage('ride-tracking');
-  window.scrollTo({ top: 0, behavior: 'smooth' });
-  return;
-  }
+    if (destination === 'city') {
+      setPage('ride-tracking');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
 
     if (
-  destination === 'discover' ||
-  destination === 'account' ||
-  destination === 'settings' ||
-  destination === 'dashboard' ||
-  destination === 'driver-dashboard' ||
-  destination === 'provider-dashboard' ||
-  destination === 'seller-dashboard' ||
-  destination === 'admin-dashboard' ||
-  destination === 'support' ||
-  destination === 'notifications' ||
-  destination === 'orders' ||
-  destination === 'orders-bookings' ||
-  destination === 'referrals' ||
-  destination === 'messages' ||
-  destination === 'wallet' ||
-  destination === 'storefront' ||
-  destination === 'job-poster-dashboard' ||
-  destination === 'ride-tracking' ||
-  destination === 'ride-booking' ||
-  destination === 'job-application' ||
-  destination === 'job-detail' ||
-  destination === 'delivery-details' ||
-  destination === 'checkout' ||
-  destination === 'payment-success' ||
-  destination === 'cart' ||
-  destination === 'seller-listing'
-) {
-  setPage(destination);
-  window.scrollTo({ top: 0, behavior: 'smooth' });
-  return;
-}
+      destination === 'discover' ||
+      destination === 'account' ||
+      destination === 'settings' ||
+      destination === 'dashboard' ||
+      destination === 'driver-dashboard' ||
+      destination === 'provider-dashboard' ||
+      destination === 'seller-dashboard' ||
+      destination === 'admin-dashboard' ||
+      destination === 'support' ||
+      destination === 'notifications' ||
+      destination === 'orders' ||
+      destination === 'orders-bookings' ||
+      destination === 'referrals' ||
+      destination === 'messages' ||
+      destination === 'wallet' ||
+      destination === 'storefront' ||
+      destination === 'job-poster-dashboard' ||
+      destination === 'ride-tracking' ||
+      destination === 'ride-booking' ||
+      destination === 'job-application' ||
+      destination === 'job-detail' ||
+      destination === 'product-detail' ||
+      destination === 'delivery-details' ||
+      destination === 'checkout' ||
+      destination === 'payment-success' ||
+      destination === 'cart' ||
+      destination === 'seller-listing'
+    ) {
+      setPage(destination);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
 
     const sectionByDestination = {
       shop: 'finds',
@@ -403,12 +528,52 @@ function App() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  // Handles the seller listing button in the navigation header.
   const handleList = () => {
     navigate('seller-listing');
   };
 
-  // Dedicated Shop page with the shared navigation header.
+  // Dedicated About Us page.
+  if (page === 'footer-about-us') {
+    return (
+      <>
+        <SiteHeader
+          page={page}
+          onNavigate={navigate}
+          onList={handleList}
+          cartCount={cartItems.reduce(
+            (n, item) => n + item.qty,
+            0
+          )}
+        />
+
+        <AboutUsPage onNavigate={navigate} />
+      </>
+    );
+  }
+
+  // Dedicated standalone pages for other footer links.
+  if (page.startsWith('footer-')) {
+    return (
+      <>
+        <SiteHeader
+          page={page}
+          onNavigate={navigate}
+          onList={handleList}
+          cartCount={cartItems.reduce(
+            (n, item) => n + item.qty,
+            0
+          )}
+        />
+
+        <FooterContentPage
+          page={page.replace('footer-', '')}
+          onNavigate={navigate}
+        />
+      </>
+    );
+  }
+
+  // Dedicated Shop page.
   if (page === 'shop') {
     return (
       <>
@@ -431,7 +596,7 @@ function App() {
     );
   }
 
-  // Dedicated Rentals page with the shared navigation header.
+  // Dedicated Rentals page.
   if (page === 'rentals') {
     return (
       <>
@@ -454,7 +619,7 @@ function App() {
     );
   }
 
-  // NEW: Dedicated Services page with the shared navigation header.
+  // Dedicated Services page.
   if (page === 'services') {
     return (
       <>
@@ -497,7 +662,6 @@ function App() {
         page !== 'admin-dashboard' &&
         page !== 'job-poster-dashboard' &&
         page !== 'ride-booking' && (
-
           <SiteHeader
             page={page}
             onNavigate={navigate}
@@ -509,7 +673,501 @@ function App() {
           />
         )}
 
-      {page === 'seller-listing' ? (
+      {page === 'product-detail' ? (
+        selectedProduct ? (
+          <main
+            style={{
+              maxWidth: '1200px',
+              margin: '0 auto',
+              padding: '35px 20px 80px',
+              color: '#183b2b',
+            }}
+          >
+            <button
+              type="button"
+              onClick={() => navigate('home')}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '8px',
+                border: 'none',
+                background: 'transparent',
+                color: '#26734d',
+                fontWeight: 700,
+                cursor: 'pointer',
+                marginBottom: '28px',
+                padding: '8px 0',
+              }}
+            >
+              <ArrowLeft size={18} />
+              Back to marketplace
+            </button>
+
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 340px), 1fr))',
+                gap: '42px',
+                alignItems: 'start',
+              }}
+            >
+              <div>
+                <div
+                  style={{
+                    background: '#f4f7f4',
+                    borderRadius: '18px',
+                    overflow: 'hidden',
+                    minHeight: '350px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <img
+                    src={selectedProduct.image}
+                    alt={selectedProduct.name}
+                    style={{
+                      width: '100%',
+                      height: '100%',
+                      maxHeight: '550px',
+                      objectFit: 'cover',
+                      display: 'block',
+                    }}
+                  />
+                </div>
+
+                <div
+                  style={{
+                    display: 'flex',
+                    gap: '10px',
+                    flexWrap: 'wrap',
+                    marginTop: '16px',
+                  }}
+                >
+                  <span
+                    style={{
+                      background: '#e8f5ed',
+                      color: '#24734b',
+                      padding: '8px 13px',
+                      borderRadius: '30px',
+                      fontSize: '13px',
+                      fontWeight: 700,
+                    }}
+                  >
+                    <ShieldCheck
+                      size={14}
+                      style={{
+                        verticalAlign: 'middle',
+                        marginRight: '5px',
+                      }}
+                    />
+                    KHUB listing
+                  </span>
+
+                  <span
+                    style={{
+                      background: '#f1f3f1',
+                      padding: '8px 13px',
+                      borderRadius: '30px',
+                      fontSize: '13px',
+                    }}
+                  >
+                    {selectedProduct.condition}
+                  </span>
+
+                  <span
+                    style={{
+                      background: '#f1f3f1',
+                      padding: '8px 13px',
+                      borderRadius: '30px',
+                      fontSize: '13px',
+                    }}
+                  >
+                    {selectedProduct.availability}
+                  </span>
+                </div>
+              </div>
+
+              <div>
+                <span
+                  style={{
+                    color: '#278052',
+                    fontSize: '13px',
+                    fontWeight: 800,
+                    textTransform: 'uppercase',
+                    letterSpacing: '1px',
+                  }}
+                >
+                  {selectedProduct.kind === 'Rent'
+                    ? 'Rental listing'
+                    : 'Marketplace listing'}
+                </span>
+
+                <h1
+                  style={{
+                    fontSize: 'clamp(28px, 4vw, 42px)',
+                    lineHeight: 1.15,
+                    margin: '12px 0',
+                    color: '#173b2a',
+                  }}
+                >
+                  {selectedProduct.name}
+                </h1>
+
+                <p
+                  style={{
+                    color: '#718077',
+                    fontSize: '14px',
+                    lineHeight: 1.7,
+                  }}
+                >
+                  {selectedProduct.category}
+                </p>
+
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    margin: '20px 0',
+                    color: '#28734d',
+                    fontSize: '14px',
+                  }}
+                >
+                  <MapPin size={17} />
+                  {selectedProduct.location}
+                </div>
+
+                <div
+                  style={{
+                    fontSize: '30px',
+                    fontWeight: 800,
+                    color: '#173b2a',
+                    margin: '18px 0',
+                  }}
+                >
+                  {selectedProduct.price}
+                </div>
+
+                {selectedProduct.kind === 'Rent' && (
+                  <p
+                    style={{
+                      color: '#78847c',
+                      fontSize: '13px',
+                      marginTop: '-10px',
+                    }}
+                  >
+                    Rental price per day. Confirm availability and terms
+                    with the provider before booking.
+                  </p>
+                )}
+
+                <div
+                  style={{
+                    borderTop: '1px solid #e5ebe6',
+                    borderBottom: '1px solid #e5ebe6',
+                    padding: '20px 0',
+                    margin: '22px 0',
+                  }}
+                >
+                  <h3
+                    style={{
+                      margin: '0 0 9px',
+                      fontSize: '16px',
+                    }}
+                  >
+                    Seller information
+                  </h3>
+
+                  <div
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '12px',
+                    }}
+                  >
+                    <div
+                      style={{
+                        width: '44px',
+                        height: '44px',
+                        borderRadius: '50%',
+                        background: '#e8f5ed',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        color: '#26734d',
+                      }}
+                    >
+                      <ShoppingBag size={20} />
+                    </div>
+
+                    <div>
+                      <strong>{selectedProduct.sellerName}</strong>
+                      <p
+                        style={{
+                          margin: '4px 0 0',
+                          color: '#718077',
+                          fontSize: '13px',
+                        }}
+                      >
+                        {selectedProduct.seller}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <h3
+                  style={{
+                    fontSize: '17px',
+                    marginBottom: '9px',
+                  }}
+                >
+                  Product description
+                </h3>
+
+                <p
+                  style={{
+                    color: '#65746a',
+                    lineHeight: 1.8,
+                    fontSize: '15px',
+                  }}
+                >
+                  {selectedProduct.description}
+                </p>
+
+                <h3
+                  style={{
+                    fontSize: '17px',
+                    margin: '25px 0 12px',
+                  }}
+                >
+                  Listing details
+                </h3>
+
+                <ul
+                  style={{
+                    paddingLeft: '20px',
+                    color: '#65746a',
+                    lineHeight: 2,
+                    fontSize: '14px',
+                  }}
+                >
+                  {selectedProduct.features.map((feature, index) => (
+                    <li key={index}>{feature}</li>
+                  ))}
+                </ul>
+
+                <div
+                  style={{
+                    display: 'flex',
+                    flexWrap: 'wrap',
+                    gap: '12px',
+                    marginTop: '28px',
+                  }}
+                >
+                  {selectedProduct.kind === 'Rent' ? (
+                    <button
+                      type="button"
+                      onClick={() => navigate('rentals')}
+                      style={{
+                        flex: '1 1 180px',
+                        minHeight: '50px',
+                        border: 'none',
+                        borderRadius: '9px',
+                        background: '#26734d',
+                        color: '#fff',
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                      }}
+                    >
+                      Explore rental options
+                      <ArrowUpRight
+                        size={16}
+                        style={{
+                          verticalAlign: 'middle',
+                          marginLeft: '7px',
+                        }}
+                      />
+                    </button>
+                  ) : (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => buyProductNow(selectedProduct)}
+                        style={{
+                          flex: '1 1 150px',
+                          minHeight: '50px',
+                          border: 'none',
+                          borderRadius: '9px',
+                          background: '#26734d',
+                          color: '#fff',
+                          fontWeight: 700,
+                          cursor: 'pointer',
+                        }}
+                      >
+                        Buy now
+                        <ArrowUpRight
+                          size={16}
+                          style={{
+                            verticalAlign: 'middle',
+                            marginLeft: '7px',
+                          }}
+                        />
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => addProductToCart(selectedProduct)}
+                        style={{
+                          flex: '1 1 150px',
+                          minHeight: '50px',
+                          border: '1px solid #26734d',
+                          borderRadius: '9px',
+                          background: '#fff',
+                          color: '#26734d',
+                          fontWeight: 700,
+                          cursor: 'pointer',
+                        }}
+                      >
+                        <ShoppingBag
+                          size={16}
+                          style={{
+                            verticalAlign: 'middle',
+                            marginRight: '7px',
+                          }}
+                        />
+                        Add to cart
+                      </button>
+                    </>
+                  )}
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      toggleSaved(selectedProduct.id);
+                      notify(
+                        saved.includes(selectedProduct.id)
+                          ? 'Removed from your wishlist'
+                          : 'Added to your wishlist'
+                      );
+                    }}
+                    aria-label={
+                      saved.includes(selectedProduct.id)
+                        ? 'Remove from wishlist'
+                        : 'Add to wishlist'
+                    }
+                    style={{
+                      width: '52px',
+                      minHeight: '50px',
+                      border: '1px solid #dce5de',
+                      borderRadius: '9px',
+                      background: '#fff',
+                      color: saved.includes(selectedProduct.id)
+                        ? '#d34a62'
+                        : '#26734d',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    <Heart
+                      size={20}
+                      fill={
+                        saved.includes(selectedProduct.id)
+                          ? 'currentColor'
+                          : 'none'
+                      }
+                    />
+                  </button>
+                </div>
+
+                <div
+                  style={{
+                    background: '#f3f8f4',
+                    borderRadius: '12px',
+                    padding: '16px',
+                    marginTop: '25px',
+                    display: 'flex',
+                    gap: '12px',
+                    alignItems: 'flex-start',
+                  }}
+                >
+                  <ShieldCheck
+                    size={21}
+                    color="#26734d"
+                    style={{ flexShrink: 0 }}
+                  />
+                  <div>
+                    <strong style={{ fontSize: '14px' }}>
+                      Shop safely on KHUB
+                    </strong>
+                    <p
+                      style={{
+                        margin: '5px 0 0',
+                        color: '#65746a',
+                        fontSize: '13px',
+                        lineHeight: 1.6,
+                      }}
+                    >
+                      Keep payments and transaction communication within
+                      official KHUB channels. Never share your PIN or OTP.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div
+              style={{
+                marginTop: '55px',
+                paddingTop: '28px',
+                borderTop: '1px solid #e5ebe6',
+              }}
+            >
+              <h2 style={{ fontSize: '23px' }}>
+                Explore more on KHUB
+              </h2>
+              <p style={{ color: '#718077' }}>
+                Discover more products, rentals and opportunities.
+              </p>
+
+              <button
+                type="button"
+                onClick={() => navigate('shop')}
+                style={{
+                  border: 'none',
+                  background: '#26734d',
+                  color: '#fff',
+                  borderRadius: '8px',
+                  padding: '13px 20px',
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  marginTop: '10px',
+                }}
+              >
+                Visit KHUB Shop
+                <ArrowRight
+                  size={15}
+                  style={{
+                    verticalAlign: 'middle',
+                    marginLeft: '8px',
+                  }}
+                />
+              </button>
+            </div>
+          </main>
+        ) : (
+          <main style={{ padding: '80px 20px', textAlign: 'center' }}>
+            <h2>No product selected</h2>
+            <p>Choose a listing from the marketplace to view its details.</p>
+            <button
+              type="button"
+              onClick={() => navigate('home')}
+              className={styles.primary}
+            >
+              Return home
+            </button>
+          </main>
+        )
+      ) : page === 'seller-listing' ? (
         <SellerListingForm
           onNavigate={navigate}
           onSaved={() => {}}
@@ -549,10 +1207,9 @@ function App() {
           payment={paymentDetails}
           onNavigate={navigate}
         />
-      )  : page === 'admin-dashboard' ? (
+      ) : page === 'admin-dashboard' ? (
         <AdminDashboard onNavigate={navigate} />
-
-      ): page === 'discover' ? (
+      ) : page === 'discover' ? (
         <DiscoverPage
           initialQuery={globalSearch}
           onHome={() => navigate('home')}
@@ -562,20 +1219,12 @@ function App() {
         <AccountPage
           onHome={() => navigate('home')}
           onAccountCreated={(user) => {
-          if (!user) return;
+            if (!user) return;
 
-          setCurrentUser(user);
-
-          const destination = getDashboardForRole(user.role);
-
-          navigate(destination);
-        }}
-      />
-    ) : page === 'dashboard' ? (
-      <CustomerDashboard
-        user={currentUser}
-        onNavigate={navigate}
-        onLogout={handleLogout}
+            setCurrentUser(user);
+            const destination = getDashboardForRole(user.role);
+            navigate(destination);
+          }}
         />
       ) : page === 'dashboard' ? (
         <CustomerDashboard
@@ -613,7 +1262,6 @@ function App() {
           onNavigate={navigate}
           onLogout={handleLogout}
         />
-    
       ) : page === 'job-poster-dashboard' ? (
         <JobPosterDashboard
           user={currentUser}
@@ -763,7 +1411,6 @@ function App() {
           onSupport={() => navigate('support')}
           onNavigate={navigate}
         />
-      
       ) : page === 'orders' ? (
         <OrdersPage
           onBack={() => navigate('orders-bookings')}
@@ -788,7 +1435,6 @@ function App() {
           }
         />
       ) : (
-
         <>
           <main id="top">
             <section className={styles.hero} id="discover">
@@ -796,7 +1442,6 @@ function App() {
                 <span className={styles.eyebrow}>
                   Made for your everyday
                 </span>
-              
 
                 <h1>
                   A world of
@@ -811,53 +1456,54 @@ function App() {
                   forward. All in one trusted Nigerian marketplace.
                 </p>
 
-                <form className={styles.globalSearch} onSubmit={submitGlobalSearch} role="search">
+                <form
+                  className={styles.globalSearch}
+                  onSubmit={submitGlobalSearch}
+                  role="search"
+                >
                   <Search size={20} aria-hidden="true" />
-                  <label className={styles.srOnly} htmlFor="khub-global-search">
+                  <label
+                    className={styles.srOnly}
+                    htmlFor="khub-global-search"
+                  >
                     Search everything on KHUB
                   </label>
                   <input
                     id="khub-global-search"
                     type="search"
                     value={globalSearch}
-                    onChange={(event) => setGlobalSearch(event.target.value)}
+                    onChange={(event) =>
+                      setGlobalSearch(event.target.value)
+                    }
                     placeholder="Search products, rentals, services, jobs..."
                     autoComplete="off"
                   />
-                  <button type="submit">Search KHUB <ArrowRight size={16} /></button>
+                  <button type="submit">
+                    Search KHUB <ArrowRight size={16} />
+                  </button>
                 </form>
 
-            <div className={styles.actions}>
-              <button
-                className={styles.primary}
-                onClick={() => goTo('finds')}
-              >
-                Explore KHUB
-              </button>
+                <div className={styles.actions}>
+                  <button
+                    className={styles.primary}
+                    onClick={() => goTo('finds')}
+                  >
+                    Explore KHUB
+                  </button>
 
-              <button
-                className={styles.secondary}
-                onClick={() =>
-                  openModal(
-                    'Start selling on KHUB',
-                    'Create a listing and connect with people looking for what you offer.',
-                    'Get started'
-                  )
-                }
-              >
-                Start selling
-              </button>
-            </div>
-
-            {/* Temporary admin dashboard access button */}
-            {/*<button
-              className={styles.secondary}
-              onClick={() => navigate('admin-dashboard')}
-              style={{ marginTop: '16px' }}
-            >
-              Open Admin Dashboard
-            </button>
-            */}
+                  <button
+                    className={styles.secondary}
+                    onClick={() =>
+                      openModal(
+                        'Start selling on KHUB',
+                        'Create a listing and connect with people looking for what you offer.',
+                        'Get started'
+                      )
+                    }
+                  >
+                    Start selling
+                  </button>
+                </div>
 
                 <small>
                   Lagos · Abuja · Port Harcourt & beyond
@@ -923,8 +1569,7 @@ function App() {
                         return;
                       }
 
-                      // NEW: Services category opens its own page.
-                     if (name === 'Services') {
+                      if (name === 'Services') {
                         navigate('services');
                         return;
                       }
@@ -1013,15 +1658,36 @@ function App() {
 
               <div className={styles.productGrid}>
                 {filteredProducts.map((p) => (
-                  <article className={styles.productCard} key={p.id}>
+                  <article
+                    className={styles.productCard}
+                    key={p.id}
+                    role="button"
+                    tabIndex={0}
+                    aria-label={`View details for ${p.name}`}
+                    onClick={() => openProduct(p)}
+                    onKeyDown={(event) => {
+                      if (
+                        event.key === 'Enter' ||
+                        event.key === ' '
+                      ) {
+                        event.preventDefault();
+                        openProduct(p);
+                      }
+                    }}
+                    style={{ cursor: 'pointer' }}
+                  >
                     <div className={styles.productImage}>
                       <img src={p.image} alt={p.name} />
 
                       <button
+                        type="button"
                         className={`${styles.saveButton} ${
                           saved.includes(p.id) ? styles.saved : ''
                         }`}
-                        onClick={() => toggleSaved(p.id)}
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          toggleSaved(p.id);
+                        }}
                         aria-label={
                           saved.includes(p.id)
                             ? `Unsave ${p.name}`
@@ -1049,59 +1715,33 @@ function App() {
 
                       <div className={styles.productLinks}>
                         <button
-                          onClick={() => navigate('delivery-details')}
+                          type="button"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            buyProductNow(p);
+                          }}
                         >
                           Buy now <ArrowUpRight size={13} />
                         </button>
 
                         <button
-                          onClick={() => {
-                            setCartItems((old) => {
-                              const existing = old.find(
-                                (item) => item.id === p.id
-                              );
-
-                              return existing
-                                ? old.map((item) =>
-                                    item.id === p.id
-                                      ? {
-                                          ...item,
-                                          qty: item.qty + 1,
-                                        }
-                                      : item
-                                  )
-                                : [
-                                    ...old,
-                                    {
-                                      id: p.id,
-                                      name: p.name,
-                                      seller:
-                                        p.id === 1
-                                          ? 'Studio Nook · Forest green'
-                                          : p.id === 2
-                                            ? 'Sound House · Cream'
-                                            : p.seller,
-                                      price: Number(
-                                        String(p.price).replace(
-                                          /[^0-9]/g,
-                                          ''
-                                        )
-                                      ),
-                                      image: p.image,
-                                      qty: 1,
-                                      saved: false,
-                                    },
-                                  ];
-                            });
-
-                            notify(`${p.name} added to your cart`);
+                          type="button"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            addProductToCart(p);
                           }}
                         >
                           <ShoppingBag size={13} />
                           Add to cart
                         </button>
 
-                        <button onClick={() => toggleSaved(p.id)}>
+                        <button
+                          type="button"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            toggleSaved(p.id);
+                          }}
+                        >
                           <Heart
                             size={13}
                             fill={
@@ -1113,6 +1753,17 @@ function App() {
                           {saved.includes(p.id) ? 'Saved' : 'Save'}
                         </button>
                       </div>
+
+                      <small
+                        style={{
+                          display: 'block',
+                          marginTop: '12px',
+                          color: '#26734d',
+                          fontWeight: 600,
+                        }}
+                      >
+                        View product details <ArrowUpRight size={12} />
+                      </small>
                     </div>
                   </article>
                 ))}
@@ -1393,377 +2044,333 @@ function App() {
             </section>
           </main>
 
-      
-  <footer className={styles.footer} aria-label="KHUB website footer">
-    <div className={styles.footerSafety}>
-      <ShieldCheck size={30} aria-hidden="true" />
-      <div>
-        <h2>NEVER PAY OUTSIDE KHUB!</h2>
-        <p>
-          Always make payments through the official KHUB platform. Payments
-          made directly to sellers, vendors, drivers or other users outside
-          KHUB are not protected by KHUB's secure payment and escrow system
-          and may not be recoverable. Keep your transactions within KHUB to
-          enjoy applicable transaction protection and support.
-        </p>
-      </div>
-    </div>
+          <footer className={styles.footer} aria-label="KHUB website footer">
+            <div className={styles.footerSafety}>
+              <ShieldCheck size={30} aria-hidden="true" />
+              <div>
+                <h2>NEVER PAY OUTSIDE KHUB!</h2>
+                <p>
+                  Always make payments through the official KHUB platform. Payments
+                  made directly to sellers, vendors, drivers or other users outside
+                  KHUB are not protected by KHUB's secure payment and escrow system
+                  and may not be recoverable. Keep your transactions within KHUB to
+                  enjoy applicable transaction protection and support.
+                </p>
+              </div>
+            </div>
 
-    <div className={styles.footerIntro}>
-      <a
-        className={styles.logo}
-        href="#top"
-        aria-label="KHUB home"
-        onClick={(e) => {
-          e.preventDefault();
-          navigate('home');
-        }}
-      >
-        <img src={logo} alt="KHUB brand logo" />
-      </a>
-
-      <p className={styles.footerTagline}>Your No. 1 Business Hub.</p>
-      <p>
-        KHUB is your all-in-one business hub, connecting customers, businesses,
-        service providers, job seekers, property owners, drivers and logistics
-        providers on one platform. Shop, sell, rent, find jobs, offer services,
-        book rides and access delivery solutions with KHUB.
-      </p>
-    </div>
-
-    <div className={styles.footerColumns}>
-      {[
-        {
-          title: 'EXPLORE KHUB',
-          items: [
-            ['Home', 'home'],
-            ['Shop Products', 'shop'],
-            ['Categories', 'shop'],
-            ['Services', 'services'],
-            ['Jobs & Careers', 'jobs'],
-            ['Rentals', 'rentals'],
-            ['Rides', 'ride-booking'],
-            ['Logistics & Delivery', 'ride-booking'],
-            ['Featured Listings', 'finds'],
-            ['New Arrivals', 'finds'],
-            ['Special Offers', 'finds'],
-          ],
-        },
-        {
-          title: 'FOR CUSTOMERS',
-          items: [
-            ['Create Account', 'account'],
-            ['My Profile', 'settings'],
-            ['My Orders', 'orders-bookings'],
-            ['Track Orders', 'orders-bookings'],
-            ['My Wishlist', 'account'],
-            ['Shopping Cart', 'cart'],
-            ['My Bookings', 'orders-bookings'],
-            ['My Applications', 'job-application'],
-            ['My Messages', 'messages'],
-            ['My Wallet', 'wallet'],
-            ['Transaction History', 'wallet'],
-          ],
-        },
-        {
-          title: 'FOR BUSINESSES & PARTNERS',
-          items: [
-            ['Become a Seller', 'seller-listing'],
-            ['Register Your Business', 'account'],
-            ['Become a Service Provider', 'provider-dashboard'],
-            ['Post a Job', 'job-poster-dashboard'],
-            ['Become a Landlord / Property Owner', 'rentals'],
-            ['List Rental Spaces', 'rentals'],
-            ['Become a Driver', 'driver-dashboard'],
-            ['Become a Dispatch Rider', 'driver-dashboard'],
-            ['Become a Logistics Partner', 'support'],
-            ['Subscription Plans', 'subscription'],
-            ['Referral Programme', 'referrals'],
-          ],
-        },
-        {
-          title: 'HELP & SUPPORT',
-          items: [
-            ['Help Centre', 'support'],
-            ['FAQs', 'support'],
-            ['Contact Customer Care', 'support'],
-            ['How KHUB Works', 'discover'],
-            ['How to Buy', 'shop'],
-            ['How to Sell', 'seller-listing'],
-            ['Payments & Withdrawals', 'wallet'],
-            ['Orders & Deliveries', 'orders-bookings'],
-            ['Returns & Refunds', 'support'],
-            ['Booking Support', 'support'],
-            ['Report a Problem', 'support'],
-            ['Report Fraud', 'support'],
-          ],
-        },
-        {
-          title: 'SAFETY, TRUST & LEGAL',
-          items: [
-            ['Buyer Protection Policy', 'support'],
-            ['Seller Protection Policy', 'support'],
-            ['Secure Payments & Escrow', 'support'],
-            ['Terms & Conditions', 'legal'],
-            ['Privacy Policy', 'legal'],
-            ['Refund & Return Policy', 'legal'],
-            ['Cancellation Policy', 'legal'],
-            ['Delivery Policy', 'legal'],
-            ['Rental Terms', 'legal'],
-            ['Job Posting Policy', 'legal'],
-            ['Service Provider Policy', 'legal'],
-            ['Prohibited Items & Activities', 'legal'],
-            ['Dispute Resolution', 'support'],
-            ['Account Suspension & Appeals', 'support'],
-          ],
-        },
-        {
-          title: 'ABOUT KHUB',
-          items: [
-            ['About Us', 'discover'],
-            ['Mission & Vision', 'discover'],
-            ['Why Choose KHUB?', 'discover'],
-            ['Our Services', 'services'],
-            ['Careers', 'jobs'],
-            ['Become a Partner', 'support'],
-            ['Affiliate Programme', 'referrals'],
-            ['Advertise With Us', 'support'],
-            ['Business Enquiries', 'support'],
-            ['Contact Us', 'support'],
-          ],
-        },
-      ].map((group) => (
-        <details className={styles.footerGroup} key={group.title}>
-          <summary>{group.title}</summary>
-          <div className={styles.footerLinkList}>
-            {group.items.map(([label, destination]) => (
-              <button
-                key={label}
-                type="button"
-                onClick={() => {
-                  const footerInfo = {
-                    'About Us': 'KHUB is an all-in-one digital business and commerce platform designed to make buying, selling, renting, finding jobs, accessing services and connecting with opportunities easier. We connect individuals, businesses, service providers, job seekers, property owners, drivers and logistics operators.',
-                    'Mission & Vision': 'Our mission is to build an accessible, innovative and reliable digital business ecosystem connecting people, businesses, products, services and opportunities. Our vision is to become one of Africa’s leading all-in-one digital business and commerce platforms.',
-                    'Why Choose KHUB?': 'KHUB brings shopping, selling, services, jobs, rentals, transportation and logistics together in one connected platform. It is designed to improve business visibility, create earning opportunities and make everyday commerce more convenient.',
-                    'Our Services': 'Explore KHUB Shop, the business marketplace, services marketplace, jobs and careers, rentals, rides and transportation, logistics and delivery, business subscription plans and the referral programme.',
-                    'Careers': 'KHUB welcomes talented and forward-thinking people interested in software engineering, UI/UX and product design, product management, digital marketing, business development, customer support, operations, finance, logistics and related areas. Check available vacancies for application instructions. KHUB does not authorise unofficial recruitment fees.',
-                    'Become a Partner': 'KHUB welcomes business, logistics, transportation, service-provider, strategic technology, institutional and investment partners. Partnership proposals are reviewed and subject to mutual agreement.',
-                    'Affiliate Programme': 'The KHUB Affiliate Programme enables approved affiliates to share KHUB through approved channels and earn eligible rewards for qualifying referrals. Participation and rewards are subject to programme terms; earnings are not guaranteed.',
-                    'Advertise With Us': 'Businesses may enquire about homepage advertising, sponsored listings, banner and category advertising, featured business promotion, campaigns and brand partnerships. Advertising is subject to availability, review and approval.',
-                    'Business Enquiries': 'For corporate, investment, strategic partnership, technology integration, commercial, enterprise, media or public-relations enquiries, contact hello@khub.com.ng. General support: support@khub.com.ng.',
-                    'Buyer Protection Policy': 'KHUB encourages users to keep transactions within the platform. Payments made directly outside KHUB may not be protected by its transaction and escrow processes. Contact support for current buyer-protection information.',
-                    'Seller Protection Policy': 'Seller protection information and applicable procedures should be confirmed with KHUB support. Keep transaction records and use the platform’s official processes.',
-                    'Secure Payments & Escrow': 'Use official KHUB payment processes and never pay sellers, vendors or other users outside the platform. Contact support for current payment and escrow availability.',
-                  };
-
-                  if (footerInfo[label]) {
-                    openModal(label, footerInfo[label], label === 'Business Enquiries' || label === 'Become a Partner' || label === 'Advertise With Us' ? 'Send an enquiry' : 'Continue');
-                    return;
-                  }
-
-                  if (destination === 'subscription') {
-                    openModal(
-                      'KHUB subscription plans',
-                      'Free: basic access. Verified: ₦5,000/month. Premium: ₦15,000/month. Subscription benefits and payment are not configured yet.',
-                      'Contact support'
-                    );
-                    return;
-                  }
-
-                  if (destination === 'legal') {
-                    openModal(
-                      label,
-                      'This policy page has not been created yet. Contact KHUB support for current policy information.',
-                      'Contact support'
-                    );
-                    return;
-                  }
-
-                  if (['categories', 'finds', 'discover'].includes(destination)) {
-                    navigate('home');
-                    window.setTimeout(() => {
-                      document
-                        .getElementById(
-                          destination === 'categories'
-                            ? 'categories'
-                            : destination === 'finds'
-                              ? 'finds'
-                              : 'discover'
-                        )
-                        ?.scrollIntoView({ behavior: 'smooth' });
-                    }, 80);
-                    return;
-                  }
-
-                  navigate(destination);
+            <div className={styles.footerIntro}>
+              <a
+                className={styles.logo}
+                href="#top"
+                aria-label="KHUB home"
+                onClick={(e) => {
+                  e.preventDefault();
+                  navigate('home');
                 }}
               >
-                {label}
-              </button>
-            ))}
-          </div>
-        </details>
-      ))}
-    </div>
+                <img src={logo} alt="KHUB brand logo" />
+              </a>
 
-    <div className={styles.footerPlans}>
-      <div>
-        <span className={styles.footerEyebrow}>GROW WITH KHUB</span>
-        <h2>Find the right plan for your next step.</h2>
-        <p>
-          Choose the access level that suits you. Plan benefits and online
-          subscriptions are not yet connected in this version.
-        </p>
-      </div>
+              <p className={styles.footerTagline}>
+                Your No. 1 Business Hub.
+              </p>
+              <p>
+                KHUB is your all-in-one business hub, connecting customers, businesses,
+                service providers, job seekers, property owners, drivers and logistics
+                providers on one platform. Shop, sell, rent, find jobs, offer services,
+                book rides and access delivery solutions with KHUB.
+              </p>
+            </div>
 
-      <div className={styles.footerPlanCards}>
-        <article>
-          <h3>Free</h3>
-          <strong>Basic access</strong>
-          <p>Get started with KHUB.</p>
-        </article>
-        <article>
-          <h3>Verified</h3>
-          <strong>
-            ₦5,000 <small>/ month</small>
-          </strong>
-          <p>Plan details to be confirmed.</p>
-        </article>
-        <article>
-          <h3>Premium</h3>
-          <strong>
-            ₦15,000 <small>/ month</small>
-          </strong>
-          <p>Plan details to be confirmed.</p>
-        </article>
-      </div>
+            <div className={styles.footerColumns}>
+              {[
+                {
+                  title: 'EXPLORE KHUB',
+                  items: [
+                    ['Home', 'home'],
+                    ['Shop Products', 'shop'],
+                    ['Categories', 'shop'],
+                    ['Services', 'services'],
+                    ['Jobs & Careers', 'jobs'],
+                    ['Rentals', 'rentals'],
+                    ['Rides', 'ride-booking'],
+                    ['Logistics & Delivery', 'ride-booking'],
+                    ['Featured Listings', 'finds'],
+                    ['New Arrivals', 'finds'],
+                    ['Special Offers', 'finds'],
+                  ],
+                },
+                {
+                  title: 'FOR CUSTOMERS',
+                  items: [
+                    ['Create Account', 'account'],
+                    ['My Profile', 'settings'],
+                    ['My Orders', 'orders-bookings'],
+                    ['Track Orders', 'orders-bookings'],
+                    ['My Wishlist', 'account'],
+                    ['Shopping Cart', 'cart'],
+                    ['My Bookings', 'orders-bookings'],
+                    ['My Applications', 'job-application'],
+                    ['My Messages', 'messages'],
+                    ['My Wallet', 'wallet'],
+                    ['Transaction History', 'wallet'],
+                  ],
+                },
+                {
+                  title: 'FOR BUSINESSES & PARTNERS',
+                  items: [
+                    ['Become a Seller', 'seller-listing'],
+                    ['Register Your Business', 'account'],
+                    ['Become a Service Provider', 'provider-dashboard'],
+                    ['Post a Job', 'job-poster-dashboard'],
+                    ['Become a Landlord / Property Owner', 'rentals'],
+                    ['List Rental Spaces', 'rentals'],
+                    ['Become a Driver', 'driver-dashboard'],
+                    ['Become a Dispatch Rider', 'driver-dashboard'],
+                    ['Become a Logistics Partner', 'support'],
+                    ['Subscription Plans', 'subscription'],
+                    ['Referral Programme', 'referrals'],
+                  ],
+                },
+                {
+                  title: 'HELP & SUPPORT',
+                  items: [
+                    ['Help Centre', 'support'],
+                    ['FAQs', 'support'],
+                    ['Contact Customer Care', 'support'],
+                    ['How KHUB Works', 'discover'],
+                    ['How to Buy', 'shop'],
+                    ['How to Sell', 'seller-listing'],
+                    ['Payments & Withdrawals', 'wallet'],
+                    ['Orders & Deliveries', 'orders-bookings'],
+                    ['Returns & Refunds', 'support'],
+                    ['Booking Support', 'support'],
+                    ['Report a Problem', 'support'],
+                    ['Report Fraud', 'support'],
+                  ],
+                },
+                {
+                  title: 'SAFETY, TRUST & LEGAL',
+                  items: [
+                    ['Buyer Protection Policy', 'support'],
+                    ['Seller Protection Policy', 'support'],
+                    ['Secure Payments & Escrow', 'support'],
+                    ['Terms & Conditions', 'legal'],
+                    ['Privacy Policy', 'legal'],
+                    ['Refund & Return Policy', 'legal'],
+                    ['Cancellation Policy', 'legal'],
+                    ['Delivery Policy', 'legal'],
+                    ['Rental Terms', 'legal'],
+                    ['Job Posting Policy', 'legal'],
+                    ['Service Provider Policy', 'legal'],
+                    ['Prohibited Items & Activities', 'legal'],
+                    ['Dispute Resolution', 'support'],
+                    ['Account Suspension & Appeals', 'support'],
+                  ],
+                },
+                {
+                  title: 'ABOUT KHUB',
+                  items: [
+                    ['About Us', 'footer-about-us'],
+                    ['Mission & Vision', 'discover'],
+                    ['Why Choose KHUB?', 'discover'],
+                    ['Our Services', 'services'],
+                    ['Careers', 'jobs'],
+                    ['Become a Partner', 'support'],
+                    ['Affiliate Programme', 'referrals'],
+                    ['Advertise With Us', 'support'],
+                    ['Business Enquiries', 'support'],
+                    ['Contact Us', 'support'],
+                  ],
+                },
+              ].map((group) => (
+                <details className={styles.footerGroup} key={group.title}>
+                  <summary>{group.title}</summary>
+                  <div className={styles.footerLinkList}>
+                    {group.items.map(([label, destination]) => (
+                      <button
+                        key={label}
+                        type="button"
+                        onClick={() => {
+                          // About Us opens its dedicated standalone page.
+                          if (label === 'About Us') {
+                            navigate('footer-about-us');
+                            return;
+                          }
 
-      <button
-        className={styles.footerPlanCta}
-        type="button"
-        onClick={() =>
-          openModal(
-            'KHUB subscription plans',
-            'Subscriptions are not yet connected to a subscription page or payment service. Please contact support for information.',
-            'Contact support'
-          )
-        }
-      >
-        EXPLORE SUBSCRIPTION PLANS <ArrowRight size={15} />
-      </button>
-    </div>
+                          if (footerRoutes[label]) {
+                            navigate(footerRoutes[label]);
+                            window.scrollTo({ top: 0, behavior: 'smooth' });
+                            return;
+                          }
 
-    <div className={styles.footerContact}>
-      <div>
-        <h2>Customer support</h2>
-        <p><MapPin size={16} /> Kano State, Nigeria</p>
-        <p>
-          <Phone size={16} />
-          <a href="tel:+2347065036761">+234 706 503 6761</a>
-        </p>
-        <p>
-          <Mail size={16} />
-          <a href="mailto:support@khub.com.ng">support@khub.com.ng</a>
-        </p>
-        <p>
-          <ArrowUpRight size={16} />
-          <a href="https://khub.com.ng" target="_blank" rel="noreferrer">
-            khub.com.ng
-          </a>
-        </p>
-      </div>
+                          if (destination === 'subscription') {
+                            navigate('footer-subscription-plans');
+                            window.scrollTo({ top: 0, behavior: 'smooth' });
+                            return;
+                          }
 
-      <div>
-        <h2>Payments & trust</h2>
-        <p>
-          Use only payment methods displayed during KHUB checkout. Available
-          payment providers and escrow coverage depend on the live checkout
-          configuration. Never share your PIN or one-time password.
-        </p>
-      </div>
+                          if (destination === 'legal') {
+                            const slug = `footer-${label
+                              .toLowerCase()
+                              .replace(/[^a-z0-9]+/g, '-')}`;
 
-      <div>
-        <h2>Stay connected with KHUB!</h2>
-        <p>
-          Get updates on new products, business opportunities, job vacancies,
-          special offers and exciting platform features.
-        </p>
+                            navigate(slug);
+                            window.scrollTo({ top: 0, behavior: 'smooth' });
+                            return;
+                          }
 
-        <form
-          className={styles.footerNewsletter}
-          onSubmit={(e) => {
-            e.preventDefault();
-            notify(
-              'Newsletter sign-up is not connected yet. No email was sent.'
-            );
-          }}
-        >
-          <label className={styles.srOnly} htmlFor="khub-newsletter-email">
-            Email address
-          </label>
-          <input
-            id="khub-newsletter-email"
-            type="email"
-            required
-            placeholder="Enter your email address"
-          />
-          <button type="submit">Subscribe</button>
-        </form>
+                          if (
+                            ['categories', 'finds', 'discover'].includes(
+                              destination
+                            )
+                          ) {
+                            navigate('home');
 
-        <small>
-          By subscribing, you agree to receive KHUB updates. Unsubscribe
-          options will be provided when newsletter service is connected.
-        </small>
-      </div>
-    </div>
+                            window.setTimeout(() => {
+                              document
+                                .getElementById(
+                                  destination === 'categories'
+                                    ? 'categories'
+                                    : destination === 'finds'
+                                      ? 'finds'
+                                      : 'discover'
+                                )
+                                ?.scrollIntoView({ behavior: 'smooth' });
+                            }, 80);
 
-    <div className={styles.footerBottom}>
-      <span>© 2026 KHUB. All Rights Reserved.</span>
-      <div>
-        <button
-          onClick={() =>
-            openModal(
-              'Terms & Conditions',
-              'This policy page has not been created yet. Contact support for current terms.',
-              'Contact support'
-            )
-          }
-        >
-          Terms & Conditions
-        </button>
-        <button
-          onClick={() =>
-            openModal(
-              'Privacy Policy',
-              'This policy page has not been created yet. Contact support for current privacy information.',
-              'Contact support'
-            )
-          }
-        >
-          Privacy Policy
-        </button>
-        <button
-          onClick={() =>
-            openModal(
-              'Refund Policy',
-              'This policy page has not been created yet. Contact support for current refund information.',
-              'Contact support'
-            )
-          }
-        >
-          Refund Policy
-        </button>
-        <button
-          onClick={() =>
-            notify('Cookie preferences are not configured in this version.')
-          }
-        >
-          Cookie Preferences
-        </button>
-      </div>
-    </div>
-  </footer>
+                            return;
+                          }
 
+                          navigate(destination);
+                        }}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                </details>
+              ))}
+            </div>
+
+            <div className={styles.footerContact}>
+              <div>
+                <h2>Customer support</h2>
+                <p><MapPin size={16} /> Kano State, Nigeria</p>
+                <p>
+                  <Phone size={16} />
+                  <a href="tel:+2347065036761">+234 706 503 6761</a>
+                </p>
+                <p>
+                  <Mail size={16} />
+                  <a href="mailto:support@khub.com.ng">support@khub.com.ng</a>
+                </p>
+                <p>
+                  <ArrowUpRight size={16} />
+                  <a
+                    href="https://khub.com.ng"
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    khub.com.ng
+                  </a>
+                </p>
+              </div>
+
+              <div>
+                <h2>Payments & trust</h2>
+                <p>
+                  Use only payment methods displayed during KHUB checkout. Available
+                  payment providers and escrow coverage depend on the live checkout
+                  configuration. Never share your PIN or one-time password.
+                </p>
+              </div>
+
+              <div>
+                <h2>Stay connected with KHUB!</h2>
+                <p>
+                  Get updates on new products, business opportunities, job vacancies,
+                  special offers and exciting platform features.
+                </p>
+
+                <form
+                  className={styles.footerNewsletter}
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    notify(
+                      'Newsletter sign-up is not connected yet. No email was sent.'
+                    );
+                  }}
+                >
+                  <label
+                    className={styles.srOnly}
+                    htmlFor="khub-newsletter-email"
+                  >
+                    Email address
+                  </label>
+                  <input
+                    id="khub-newsletter-email"
+                    type="email"
+                    required
+                    placeholder="Enter your email address"
+                  />
+                  <button type="submit">Submit</button>
+                </form>
+
+                <small>
+                  By subscribing, you agree to receive KHUB updates. Unsubscribe
+                  options will be provided when newsletter service is connected.
+                </small>
+              </div>
+            </div>
+
+            <div className={styles.footerBottom}>
+              <span>© 2026 KHUB. All Rights Reserved.</span>
+              <div>
+                <button
+                  onClick={() =>
+                    openModal(
+                      'Terms & Conditions',
+                      'This policy page has not been created yet. Contact support for current terms.',
+                      'Contact support'
+                    )
+                  }
+                >
+                  Terms & Conditions
+                </button>
+                <button
+                  onClick={() =>
+                    openModal(
+                      'Privacy Policy',
+                      'This policy page has not been created yet. Contact support for current privacy information.',
+                      'Contact support'
+                    )
+                  }
+                >
+                  Privacy Policy
+                </button>
+                <button
+                  onClick={() =>
+                    openModal(
+                      'Refund Policy',
+                      'This policy page has not been created yet. Contact support for current refund information.',
+                      'Contact support'
+                    )
+                  }
+                >
+                  Refund Policy
+                </button>
+                <button
+                  onClick={() =>
+                    notify('Cookie preferences are not configured in this version.')
+                  }
+                >
+                  Cookie Preferences
+                </button>
+              </div>
+            </div>
+          </footer>
 
           {toast && (
             <div className={styles.toast}>

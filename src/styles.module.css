@@ -482,3 +482,26 @@ button, input, select, textarea { font: inherit; }
 .globalSearch button{display:inline-flex;align-items:center;justify-content:center;gap:8px;flex:0 0 auto;border:0;border-radius:6px;background:#103f32;color:#fff;padding:12px 15px;font-size:12px;font-weight:700;white-space:nowrap}
 .globalSearch button:hover{background:#205d49}
 @media(max-width:640px){.globalSearch{gap:8px;padding:6px 7px 6px 11px}.globalSearch input{font-size:12px}.globalSearch button{padding:11px 10px;font-size:11px}.globalSearch button svg{display:none}}
+
+
+/* Desktop: center the Discover-to-Rides navigation between the logo and actions. */
+@media(min-width:851px){
+  .navInner{
+    display:flex;
+    align-items:center;
+    gap:clamp(14px,2vw,28px);
+  }
+  .logo{flex:0 0 auto;}
+  .nav{
+    display:flex;
+    flex:1 1 auto;
+    min-width:0;
+    justify-content:center;
+    align-items:center;
+    gap:clamp(10px,1.55vw,22px);
+    white-space:nowrap;
+  }
+  .nav button{white-space:nowrap;}
+  .signupButton,.listButton{flex:0 0 auto;white-space:nowrap;}
+  .menuButton{display:none;}
+}
