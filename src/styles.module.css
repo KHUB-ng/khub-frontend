@@ -472,3 +472,13 @@
 body { -webkit-font-smoothing: antialiased; }
 p, li, label, small { line-height: 1.65; }
 button, input, select, textarea { font: inherit; }
+
+/* Homepage marketplace-wide search */
+.globalSearch{display:flex;align-items:center;gap:12px;width:min(100%,590px);padding:7px 8px 7px 16px;margin:0 0 22px;background:#fff;border:1px solid #dbe4dc;border-radius:9px;box-shadow:0 8px 24px #163e3010;color:#527466}
+.globalSearch:focus-within{border-color:#4b9870;box-shadow:0 0 0 3px #4b98701c}
+.globalSearch>svg{flex:0 0 auto}
+.globalSearch input{min-width:0;flex:1;border:0;outline:0!important;background:transparent;color:#203b33;font-size:13px;padding:11px 0}
+.globalSearch input::placeholder{color:#8b9890}
+.globalSearch button{display:inline-flex;align-items:center;justify-content:center;gap:8px;flex:0 0 auto;border:0;border-radius:6px;background:#103f32;color:#fff;padding:12px 15px;font-size:12px;font-weight:700;white-space:nowrap}
+.globalSearch button:hover{background:#205d49}
+@media(max-width:640px){.globalSearch{gap:8px;padding:6px 7px 6px 11px}.globalSearch input{font-size:12px}.globalSearch button{padding:11px 10px;font-size:11px}.globalSearch button svg{display:none}}

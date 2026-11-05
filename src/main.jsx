@@ -171,6 +171,7 @@ function App() {
   const [savedJobs, setSavedJobs] = useState([]);
   const [activeCategory, setActiveCategory] = useState('All');
   const [search, setSearch] = useState('');
+  const [globalSearch, setGlobalSearch] = useState('');
   const [mobileMenu, setMobileMenu] = useState(false);
   const [modal, setModal] = useState(null);
   const [toast, setToast] = useState('');
@@ -266,6 +267,24 @@ function App() {
   const onSubmit = (e) => {
     e.preventDefault();
     setSubmitted(true);
+  };
+
+  const submitGlobalSearch = (event) => {
+    event.preventDefault();
+    const query = globalSearch.trim();
+    if (!query) return;
+
+    const normalized = query.toLowerCase();
+    if (/\b(ride|rides|taxi|driver|pickup|drop.?off|delivery|deliveries|parcel|logistics)\b/.test(normalized)) {
+      navigate('ride-booking');
+      return;
+    }
+
+    // Discover is KHUB's cross-category results view (products, rentals,
+    // services and jobs), so general searches start there.
+    setGlobalSearch(query);
+    setPage('discover');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const navigate = (destination) => {
@@ -497,6 +516,7 @@ function App() {
         />
       ) : page === 'cart' ? (
         <CartPage
+          onBack={() => navigate('dashboard')}
           onNavigate={navigate}
           cartItems={cartItems}
           onUpdateCart={setCartItems}
@@ -534,6 +554,7 @@ function App() {
 
       ): page === 'discover' ? (
         <DiscoverPage
+          initialQuery={globalSearch}
           onHome={() => navigate('home')}
           onAccount={() => navigate('account')}
         />
@@ -601,6 +622,7 @@ function App() {
         />
       ) : page === 'job-listings' ? (
         <JobListingsPage
+          onBack={() => navigate('dashboard')}
           savedJobs={savedJobs}
           onToggleSave={(id) =>
             setSavedJobs((prev) =>
@@ -789,7 +811,22 @@ function App() {
                   forward. All in one trusted Nigerian marketplace.
                 </p>
 
-                
+                <form className={styles.globalSearch} onSubmit={submitGlobalSearch} role="search">
+                  <Search size={20} aria-hidden="true" />
+                  <label className={styles.srOnly} htmlFor="khub-global-search">
+                    Search everything on KHUB
+                  </label>
+                  <input
+                    id="khub-global-search"
+                    type="search"
+                    value={globalSearch}
+                    onChange={(event) => setGlobalSearch(event.target.value)}
+                    placeholder="Search products, rentals, services, jobs..."
+                    autoComplete="off"
+                  />
+                  <button type="submit">Search KHUB <ArrowRight size={16} /></button>
+                </form>
+
             <div className={styles.actions}>
               <button
                 className={styles.primary}
@@ -1401,7 +1438,7 @@ function App() {
           items: [
             ['Home', 'home'],
             ['Shop Products', 'shop'],
-            ['Categories', 'categories'],
+            ['Categories', 'shop'],
             ['Services', 'services'],
             ['Jobs & Careers', 'jobs'],
             ['Rentals', 'rentals'],
@@ -1504,6 +1541,26 @@ function App() {
                 key={label}
                 type="button"
                 onClick={() => {
+                  const footerInfo = {
+                    'About Us': 'KHUB is an all-in-one digital business and commerce platform designed to make buying, selling, renting, finding jobs, accessing services and connecting with opportunities easier. We connect individuals, businesses, service providers, job seekers, property owners, drivers and logistics operators.',
+                    'Mission & Vision': 'Our mission is to build an accessible, innovative and reliable digital business ecosystem connecting people, businesses, products, services and opportunities. Our vision is to become one of Africa’s leading all-in-one digital business and commerce platforms.',
+                    'Why Choose KHUB?': 'KHUB brings shopping, selling, services, jobs, rentals, transportation and logistics together in one connected platform. It is designed to improve business visibility, create earning opportunities and make everyday commerce more convenient.',
+                    'Our Services': 'Explore KHUB Shop, the business marketplace, services marketplace, jobs and careers, rentals, rides and transportation, logistics and delivery, business subscription plans and the referral programme.',
+                    'Careers': 'KHUB welcomes talented and forward-thinking people interested in software engineering, UI/UX and product design, product management, digital marketing, business development, customer support, operations, finance, logistics and related areas. Check available vacancies for application instructions. KHUB does not authorise unofficial recruitment fees.',
+                    'Become a Partner': 'KHUB welcomes business, logistics, transportation, service-provider, strategic technology, institutional and investment partners. Partnership proposals are reviewed and subject to mutual agreement.',
+                    'Affiliate Programme': 'The KHUB Affiliate Programme enables approved affiliates to share KHUB through approved channels and earn eligible rewards for qualifying referrals. Participation and rewards are subject to programme terms; earnings are not guaranteed.',
+                    'Advertise With Us': 'Businesses may enquire about homepage advertising, sponsored listings, banner and category advertising, featured business promotion, campaigns and brand partnerships. Advertising is subject to availability, review and approval.',
+                    'Business Enquiries': 'For corporate, investment, strategic partnership, technology integration, commercial, enterprise, media or public-relations enquiries, contact hello@khub.com.ng. General support: support@khub.com.ng.',
+                    'Buyer Protection Policy': 'KHUB encourages users to keep transactions within the platform. Payments made directly outside KHUB may not be protected by its transaction and escrow processes. Contact support for current buyer-protection information.',
+                    'Seller Protection Policy': 'Seller protection information and applicable procedures should be confirmed with KHUB support. Keep transaction records and use the platform’s official processes.',
+                    'Secure Payments & Escrow': 'Use official KHUB payment processes and never pay sellers, vendors or other users outside the platform. Contact support for current payment and escrow availability.',
+                  };
+
+                  if (footerInfo[label]) {
+                    openModal(label, footerInfo[label], label === 'Business Enquiries' || label === 'Become a Partner' || label === 'Advertise With Us' ? 'Send an enquiry' : 'Continue');
+                    return;
+                  }
+
                   if (destination === 'subscription') {
                     openModal(
                       'KHUB subscription plans',

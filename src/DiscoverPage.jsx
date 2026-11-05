@@ -18,9 +18,9 @@ const listings = [
   { id: 108, title: 'Operations coordinator', category: 'Jobs', type: 'Job', location: 'Full-time · On-site · Riverline Commerce', price: 250000, priceLabel: '₦250,000–₦350,000 / mo', description: 'Coordinate daily operations and support a growing team.', verified: true, available: false },
 ];
 
-export default function DiscoverPage({ onHome = () => {}, onAccount = () => {} }) {
-  const [search, setSearch] = useState('Creative workspace');
-  const [searchEdited, setSearchEdited] = useState(false);
+export default function DiscoverPage({ onHome = () => {}, onAccount = () => {}, initialQuery = '' }) {
+  const [search, setSearch] = useState(initialQuery);
+  const [searchEdited, setSearchEdited] = useState(Boolean(initialQuery));
   const [tab, setTab] = useState('All');
   const [category, setCategory] = useState(['Furniture & home']);
   const [verified, setVerified] = useState(true);

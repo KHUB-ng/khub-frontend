@@ -53,6 +53,7 @@ export default function JobApplicationPage({ user, job, onBack, onNavigate }) {
   };
 
   return <main className={styles.page}>
+    <div style={{ marginBottom: 18 }}><button type="button" onClick={onBack} aria-label="Go back to the previous page" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, border: '1px solid #dce8df', background: '#fff', color: '#176b43', borderRadius: 999, padding: '10px 16px', fontWeight: 700, cursor: 'pointer', boxShadow: '0 2px 8px rgba(20,60,35,.06)' }}><span aria-hidden="true">←</span> Back</button></div>
     <header className={styles.heading}>
       <h1>Put your best work forward.</h1>
       <p>05 Jobs / Job application<br />{selectedJob.title} · {selectedJob.company} · {selectedJob.reference} · Your information stays private.</p>

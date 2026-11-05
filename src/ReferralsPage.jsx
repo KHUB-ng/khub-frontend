@@ -32,6 +32,7 @@ export default function ReferralsPage({ onBack = () => {}, onWallet = () => {} }
   };
 
   return <div className={styles.page}>
+    <div style={{ marginBottom: 18 }}><button type="button" onClick={onBack} aria-label="Go back to the previous page" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, border: '1px solid #dce8df', background: '#fff', color: '#176b43', borderRadius: 999, padding: '10px 16px', fontWeight: 700, cursor: 'pointer', boxShadow: '0 2px 8px rgba(20,60,35,.06)' }}><span aria-hidden="true">←</span> Back</button></div>
     <header className={styles.header}>
       <h1>Good things are better together.</h1>
       <p>09 Personal hub / Referrals<br/>Invite your people to KHUB. Track each eligible reward without guesswork.</p>

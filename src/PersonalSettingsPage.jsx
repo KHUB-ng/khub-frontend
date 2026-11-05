@@ -27,6 +27,7 @@ export default function PersonalSettingsPage({ user = {}, onBack = () => {}, onN
   };
   const save = (e) => { e.preventDefault(); setSaved(true); setPhotoMessage(''); };
   return <main className={styles.page}>
+    <div style={{ marginBottom: 18 }}><button type="button" onClick={onBack} aria-label="Go back to the previous page" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, border: '1px solid #dce8df', background: '#fff', color: '#176b43', borderRadius: 999, padding: '10px 16px', fontWeight: 700, cursor: 'pointer', boxShadow: '0 2px 8px rgba(20,60,35,.06)' }}><span aria-hidden="true">←</span> Back</button></div>
     <header className={styles.heading}><h1>A profile that feels like you.</h1><p>Q9 Personal hub / Profile edit</p><span>Manage your public identity and private contact details. You control what’s shared.</span></header>
     <div className={styles.layout}>
       <div className={styles.leftColumn}>

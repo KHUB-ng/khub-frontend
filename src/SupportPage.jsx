@@ -34,6 +34,7 @@ export default function SupportPage({ user = {}, onBack = () => {} }) {
   };
   return <div className={styles.page}>
     <main className={styles.main}>
+      <div style={{ marginBottom: 18 }}><button type="button" onClick={onBack} aria-label="Go back to the previous page" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, border: '1px solid #dce8df', background: '#fff', color: '#176b43', borderRadius: 999, padding: '10px 16px', fontWeight: 700, cursor: 'pointer', boxShadow: '0 2px 8px rgba(20,60,35,.06)' }}><span aria-hidden="true">←</span> Back</button></div>
       <header className={styles.heading}><h1>A little help goes a long way.</h1><p>09 Personal hub / Support center</p><p>Find an answer or tell us what happened. We’ll keep your task context together.</p></header>
       <label className={styles.search}><span>Search help</span><input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Payments, delivery, bookings, account..." aria-label="Search help" /></label>
       <section className={styles.helpGrid}>{helpGroups.map(g=><article className={styles.card} key={g.title}><h2>{g.title}</h2><p>{g.items}</p><button className={styles.link} onClick={()=>chooseGroup(g)}>{g.action}</button></article>)}</section>

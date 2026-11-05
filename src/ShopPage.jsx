@@ -14,6 +14,7 @@ import headphones from './assets/headphones.jpg';
 import lamp from './assets/lamp.jpg';
 import camera from './assets/camera.jpg';
 import SellerListingForm from './SellerListingForm.jsx';
+import ProductDetailPage from './ProductDetailPage.jsx';
 
 const items = [
   { id: 1, title: 'The Lekki lounge chair', category: 'Furniture & home', location: 'Lekki, Lagos', city: 'Lagos', condition: 'New', price: 145000, image: chair, seller: 'Studio Nook', advertised: true, verified: false, availableToday: true },
@@ -34,7 +35,7 @@ function topCategoryMatches(product, category) {
   return product.category === category;
 }
 
-export default function ShopPage({ onHome, onRent }) {
+export default function ShopPage({ onHome, onRent, onNavigate }) {
   const [query, setQuery] = useState('');
   const [category, setCategory] = useState('All products');
   const [location, setLocation] = useState('Lagos, Nigeria');
@@ -92,6 +93,10 @@ export default function ShopPage({ onHome, onRent }) {
     setPageNumber(1);
     setShowMobileFilters(false);
   };
+  if (selected) {
+    return <ProductDetailPage product={selected} products={items} onBack={() => setSelected(null)} onOpenProduct={setSelected} saved={saved.includes(selected.id)} onToggleSave={() => toggleSave(selected.id)} onAddToCart={() => window.alert('Your product is selected. Cart checkout integration can be connected to your existing cart flow.')} />;
+  }
+
   const goToPage = next => {
     setPageNumber(Math.max(1, Math.min(22, next)));
     document.querySelector(`.${styles.main}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -182,13 +187,13 @@ export default function ShopPage({ onHome, onRent }) {
               {filtered.map(p => (
                 <article className={styles.card} key={p.id}>
                   <div className={styles.photo}>
-                    <img src={p.image} alt={p.title} />
+                    <img src={p.image} alt={p.title} onClick={() => setSelected(p)} role="button" tabIndex={0} onKeyDown={e => e.key === 'Enter' && setSelected(p)} />
                     <button className={styles.heart} onClick={() => toggleSave(p.id)} aria-label={saved.includes(p.id) ? 'Remove saved item' : 'Save item'}>
                       <Heart size={18} fill={saved.includes(p.id) ? 'currentColor' : 'none'} />
                     </button>
                   </div>
                   <div className={styles.cardBody}>
-                    <h2>{p.title}</h2>
+                    <h2><button type="button" onClick={() => setSelected(p)}>{p.title}</button></h2>
                     <p>{p.advertised ? 'Advertised' : p.verified ? 'Identity verified' : p.seller} · {p.location} · {p.condition}{p.advertised ? ` · ${p.seller}` : ''}</p>
                     <strong>{money(p.price)}</strong>
                     <div className={styles.links}>
@@ -217,20 +222,7 @@ export default function ShopPage({ onHome, onRent }) {
         <span>Trust &amp; safety　/　Contact support</span>
       </footer>
 
-      {selected && (
-        <div className={styles.overlay} onMouseDown={e => { if (e.target === e.currentTarget) setSelected(null); }}>
-          <section className={styles.detail} role="dialog" aria-modal="true" aria-labelledby="product-detail-title">
-            <button className={styles.back} onClick={() => setSelected(null)}><ArrowLeft size={16} /> Back to products</button>
-            <img src={selected.image} alt={selected.title} />
-            <span className={styles.eyebrow}>SHOPPING / PRODUCT DETAIL</span>
-            <h2 id="product-detail-title">{selected.title}</h2>
-            <p>{selected.category} · {selected.location}</p>
-            <strong className={styles.detailPrice}>{money(selected.price)}</strong>
-            <p>Seller: {selected.seller}. Contact the seller to confirm availability, delivery options and product details before purchasing.</p>
-            <button className={styles.apply} onClick={() => { setSelected(null); window.alert('Demo only: checkout is not connected yet.'); }}><ShoppingBag size={15} /> Add to cart</button>
-          </section>
-        </div>
-      )}
+
     </div>
   );
 }

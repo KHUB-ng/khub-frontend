@@ -14,6 +14,11 @@ export default function OrdersBookingsPage({onBack=()=>{}, onOpenOrder=()=>{}, o
  const filtered=useMemo(()=>records.filter(r=> (tab==='All (5)' || r.type===tab.split(' (')[0]) && (`${r.id} ${r.title} ${r.provider} ${r.type}`).toLowerCase().includes(query.toLowerCase()) && (status==='All statuses'||r.status.toLowerCase().includes(status.toLowerCase())) && (dateRange!=='October 2026'||true)),[tab,query,status,dateRange]);
  const action=(r)=>{if(r.type==='Shopping') onOpenOrder(); else if(r.type==='Services') setNotice('Booking '+r.id+' selected. Booking details will open here when connected.'); else setNotice(`${r.action}: ${r.id}. Latest activity is shown in this workspace.`)};
  return <main className={styles.page}>
+  <div className={styles.topBackRow}>
+   <button type="button" className={styles.topBack} onClick={onBack} aria-label="Go back to the previous page">
+    <span aria-hidden="true">←</span> Back
+   </button>
+  </div>
   <header className={styles.heading}><h1>All your plans, in one place.</h1><p>09 Personal hub / Orders and bookings</p><span>Shopping, services, rides and deliveries · Track what’s active and what’s complete.</span></header>
   <nav className={styles.tabs} aria-label="Activity categories">{tabs.map(t=><button key={t} className={tab===t?styles.activeTab:''} onClick={()=>setTab(t)}>{t}</button>)}</nav>
   <div className={styles.filters}><label>Search reference or provider<input value={query} onChange={e=>setQuery(e.target.value)} placeholder="Search your activity" /></label><label>Status<select value={status} onChange={e=>setStatus(e.target.value)}><option>All statuses</option><option>Preparing</option><option>Paid</option><option>confirmed</option><option>Completed</option><option>progress</option><option>scheduled</option></select></label><label>Date range<select value={dateRange} onChange={e=>setDateRange(e.target.value)}><option>October 2026</option><option>September 2026</option><option>All dates</option></select></label></div>

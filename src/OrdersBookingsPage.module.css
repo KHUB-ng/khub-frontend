@@ -244,3 +244,37 @@
     width: 100%;
   }
 }
+
+.topBackRow {
+  display: flex;
+  align-items: center;
+  margin: 0 0 22px;
+}
+
+.topBack {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  min-height: 42px;
+  padding: 9px 15px;
+  border: 1px solid #cbd9d0;
+  border-radius: 8px;
+  background: #fff;
+  color: #124535;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background .18s ease, border-color .18s ease, transform .18s ease;
+}
+
+.topBack:hover {
+  background: #edf5f0;
+  border-color: #1b7657;
+  transform: translateX(-2px);
+}
+
+.topBack:focus-visible {
+  outline: 3px solid rgba(27, 118, 87, .25);
+  outline-offset: 2px;
+}

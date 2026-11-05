@@ -23,6 +23,7 @@ export default function NotificationsPage({ onBack = () => {}, onNavigate = () =
   const markAll = () => setItems(prev => prev.map(n => ({ ...n, unread: false })));
   const openItem = (id) => setItems(prev => prev.map(n => n.id === id ? { ...n, unread: false } : n));
   return <main className={styles.page}>
+    <div style={{ marginBottom: 18 }}><button type="button" onClick={onBack} aria-label="Go back to the previous page" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, border: '1px solid #dce8df', background: '#fff', color: '#176b43', borderRadius: 999, padding: '10px 16px', fontWeight: 700, cursor: 'pointer', boxShadow: '0 2px 8px rgba(20,60,35,.06)' }}><span aria-hidden="true">←</span> Back</button></div>
     <header className={styles.heading}><h1>The updates that matter.</h1><p>Q9 Personal hub / Notifications</p><span>{unread} unread updates · Ordered by date · Account and task alerts stay separate from promotions.</span></header>
     <nav className={styles.tabs} aria-label="Notification categories">{categories.map(c => <button key={c} className={category === c ? styles.activeTab : ''} onClick={() => setCategory(c)}>{c}</button>)}</nav>
     <div className={styles.actions}><button className={styles.link} onClick={markAll}>Mark all as read</button><button className={styles.link} onClick={() => { document.getElementById('notification-controls')?.scrollIntoView({ behavior: 'smooth', block: 'center' }); }}>Manage preferences</button></div>

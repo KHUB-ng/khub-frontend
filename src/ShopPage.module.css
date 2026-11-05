@@ -224,3 +224,4 @@
   .cardBody p { font-size: 11px; }
   .links button { font-size: 12px; }
 }
+.cardBody h2 button{border:0;background:transparent;padding:0;text-align:left;color:inherit;font:inherit;font-weight:inherit;cursor:pointer}.photo img{cursor:pointer}
