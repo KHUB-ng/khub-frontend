@@ -1,6 +1,8 @@
 
 import logo from './assets/khub_green-removebg-preview.png';
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
+import { api } from './lib/api.js';
+import { authApi } from './lib/auth.js';
 import { createRoot } from 'react-dom/client';
 import {
   Search,
@@ -72,97 +74,6 @@ import FooterContentPage, { footerRoutes } from './FooterContentPage.jsx';
 import AboutUsPage from './AboutUsPage.jsx';
 
 
-const products = [
-  {
-    id: 1,
-    name: 'The Lekki lounge chair',
-    category: 'Advertised · Lekki, Lagos · New',
-    seller: 'Verified seller',
-    sellerName: 'Studio Nook',
-    price: '₦145,000',
-    numericPrice: 145000,
-    image: chair,
-    kind: 'Shop',
-    location: 'Lekki, Lagos',
-    condition: 'Brand new',
-    availability: 'Available',
-    description:
-      'Bring comfort and character into your living space with this beautifully styled lounge chair. Its contemporary design makes it suitable for living rooms, reading corners and modern office spaces.',
-    features: [
-      'Contemporary lounge design',
-      'Suitable for living rooms and office spaces',
-      'Locally listed by a verified seller',
-      'Delivery options available at checkout',
-    ],
-  },
-  {
-    id: 2,
-    name: 'Wireless headphones',
-    category: 'Identity verified · Ikeja, Lagos · New',
-    seller: 'Identity verified seller',
-    sellerName: 'Sound House',
-    price: '₦58,000',
-    numericPrice: 58000,
-    image: headphones,
-    kind: 'Shop',
-    location: 'Ikeja, Lagos',
-    condition: 'Brand new',
-    availability: 'Available',
-    description:
-      'Enjoy your favourite audio with these wireless headphones. A convenient everyday accessory for work, entertainment, study and travel.',
-    features: [
-      'Wireless headphone design',
-      'Suitable for everyday listening',
-      'New listing',
-      'Delivery options available at checkout',
-    ],
-  },
-  {
-    id: 3,
-    name: 'Walnut bedside lamp',
-    category: 'Local maker · Wuse, Abuja · Handmade',
-    seller: 'Local maker',
-    sellerName: 'Wuse Home Studio',
-    price: '₦32,000',
-    numericPrice: 32000,
-    image: lamp,
-    kind: 'Shop',
-    location: 'Wuse, Abuja',
-    condition: 'Handmade',
-    availability: 'Available',
-    description:
-      'Add a warm finishing touch to your bedroom or living area with this walnut bedside lamp. Its simple styling makes it an attractive addition to contemporary interiors.',
-    features: [
-      'Walnut-inspired finish',
-      'Handmade listing',
-      'Suitable for bedside and living spaces',
-      'Delivery options available at checkout',
-    ],
-  },
-  {
-    id: 4,
-    name: 'Camera kit for rent',
-    category: 'Rental · Yaba, Lagos · Dates available',
-    seller: 'Rental provider',
-    sellerName: 'Yaba Camera Rentals',
-    price: '₦18,000 / day',
-    numericPrice: 18000,
-    image: camera,
-    kind: 'Rent',
-    location: 'Yaba, Lagos',
-    condition: 'Rental equipment',
-    availability: 'Dates available',
-    description:
-      'Need camera equipment for a project, event or creative production? This camera kit is listed for short-term rental. Contact the provider to confirm the equipment details and available dates before booking.',
-    features: [
-      'Camera kit available for rental',
-      'Daily rental pricing',
-      'Availability subject to confirmation',
-      'Confirm rental dates before booking',
-    ],
-  },
-];
-
 const categories = [
   {
     name: 'Shop',
@@ -197,33 +108,42 @@ const categories = [
 ];
 
 function getDashboardForRole(role) {
-  switch (role) {
-    case 'Buyer':
-      return 'dashboard';
-    case 'Seller':
-      return 'seller-dashboard';
-    case 'Driver':
-      return 'driver-dashboard';
-    case 'Provider':
-      return 'provider-dashboard';
-    case 'Job poster':
-      return 'job-poster-dashboard';
-    case 'Job seeker':
-      return 'job-listings';
-    default:
-      return 'dashboard';
+  switch (String(role || '').toLowerCase()) {
+    case 'buyer': return 'dashboard';
+    case 'seller': return 'seller-dashboard';
+    case 'driver': return 'driver-dashboard';
+    case 'provider':
+    case 'service_provider': return 'provider-dashboard';
+    case 'job poster':
+    case 'job_poster': return 'job-poster-dashboard';
+    case 'job seeker':
+    case 'job_seeker': return 'job-listings';
+    case 'admin': return 'admin-dashboard';
+    default: return 'dashboard';
   }
+}
+
+function normalizeApiUser(user) {
+  if (!user) return null;
+  const roles = {
+    buyer: 'Buyer',
+    seller: 'Seller',
+    driver: 'Driver',
+    service_provider: 'Provider',
+    job_poster: 'Job poster',
+    admin: 'Admin',
+  };
+  return { ...user, role_code: user.role, role: roles[String(user.role || '').toLowerCase()] || user.role };
 }
 
 function App() {
   const [page, setPage] = useState('home');
 
-  const [currentUser, setCurrentUser] = useState({
-    name: 'Tomi Adeyemi',
-    email: 'tomi.adeyemi@example.com',
-    phone: '+234 803 000 1428',
-    role: 'Buyer',
-  });
+  const [currentUser, setCurrentUser] = useState(null);
+  const [authLoading, setAuthLoading] = useState(true);
+  const [products, setProducts] = useState([]);
+  const [listingsLoading, setListingsLoading] = useState(true);
+  const [listingsError, setListingsError] = useState('');
 
   const [saved, setSaved] = useState([]);
   const [savedJobs, setSavedJobs] = useState([]);
@@ -238,48 +158,57 @@ function App() {
   // Stores the product currently being viewed.
   const [selectedProduct, setSelectedProduct] = useState(null);
 
-  const [paymentDetails, setPaymentDetails] = useState({
-    method: 'Bank transfer',
-    total: 207000,
-  });
+  const [paymentDetails, setPaymentDetails] = useState(null);
+  const [deliveryDetails, setDeliveryDetails] = useState(null);
+  const [cartItems, setCartItems] = useState([]);
+  const [selectedJob, setSelectedJob] = useState(null);
 
-  const [deliveryDetails, setDeliveryDetails] = useState({
-    deliveryFee: 4000,
-    total: 207000,
-    delivery: 'standard',
-  });
+  useEffect(() => {
+    let active = true;
+    authApi.getCurrentUser()
+      .then((user) => { if (active) setCurrentUser(normalizeApiUser(user)); })
+      .catch(() => { if (active) setCurrentUser(null); })
+      .finally(() => { if (active) setAuthLoading(false); });
 
-  const [cartItems, setCartItems] = useState([
-    {
-      id: 1,
-      name: 'The Lekki lounge chair',
-      seller: 'Studio Nook · Forest green',
-      price: 145000,
-      image: chair,
-      qty: 1,
-      saved: false,
-    },
-    {
-      id: 2,
-      name: 'Wireless headphones',
-      seller: 'Sound House · Cream',
-      price: 58000,
-      image: headphones,
-      qty: 1,
-      saved: false,
-    },
-  ]);
+    api.get('/listings?page=1&page_size=24', { auth: false })
+      .then((payload) => {
+        if (!active) return;
+        const rows = Array.isArray(payload) ? payload : (payload?.items || []);
+        const mapped = rows.map((listing) => {
+          const vertical = listing.vertical;
+          const image = vertical === 'rental' ? rental : vertical === 'service' ? service : vertical === 'job' ? camera : chair;
+          const amountKobo = listing.effective_price_kobo ?? listing.price_kobo ?? 0;
+          const kind = vertical === 'rental' ? 'Rent' : vertical === 'service' ? 'Services' : vertical === 'job' ? 'Jobs' : 'Shop';
+          return {
+            id: listing.pid,
+            pid: listing.pid,
+            name: listing.title,
+            category: [listing.category, listing.location].filter(Boolean).join(' · '),
+            seller: 'KHUB marketplace listing',
+            sellerName: 'KHUB member',
+            price: listing.price_display || (amountKobo ? `₦${(amountKobo / 100).toLocaleString('en-NG')}` : 'Contact provider'),
+            numericPrice: amountKobo / 100,
+            image,
+            kind,
+            location: listing.location || 'Nigeria',
+            condition: listing.attributes?.condition || 'Listed on KHUB',
+            availability: listing.status,
+            description: listing.description,
+            features: [],
+            vertical,
+            priceKobo: amountKobo,
+          };
+        });
+        setProducts(mapped);
+        setListingsError('');
+      })
+      .catch((error) => {
+        if (active) setListingsError(error?.message || 'Marketplace listings could not be loaded.');
+      })
+      .finally(() => { if (active) setListingsLoading(false); });
 
-  const [selectedJob, setSelectedJob] = useState({
-    title: 'Product designer',
-    company: 'Cedar Digital',
-    reference: 'KH-JB-3107',
-    salary: '₦450,000–₦650,000 / month',
-    location: 'Lagos',
-    arrangement: 'Hybrid',
-    type: 'Full-time',
-    closes: '25 Oct 2026',
-  });
+    return () => { active = false; };
+  }, []);
 
   const filteredProducts = useMemo(
     () =>
@@ -407,6 +336,19 @@ function App() {
 
   const navigate = (destination) => {
     setMobileMenu(false);
+    const protectedPages = new Set([
+      'settings', 'dashboard', 'driver-dashboard', 'provider-dashboard',
+      'seller-dashboard', 'admin-dashboard', 'job-poster-dashboard',
+      'orders', 'orders-bookings', 'referrals', 'messages', 'wallet',
+      'job-application', 'delivery-details', 'checkout', 'payment-success',
+      'cart', 'seller-listing', 'storefront', 'ride-tracking'
+    ]);
+    if (protectedPages.has(destination) && !currentUser) {
+      setPage('account');
+      notify('Sign in to access this part of KHUB.');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
 
     if (destination === 'home') {
       setPage('home');
@@ -522,10 +464,14 @@ function App() {
     }
   };
 
-  const handleLogout = () => {
-    setCurrentUser(null);
-    setPage('account');
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+  const handleLogout = async () => {
+    try { await authApi.signOut(); }
+    finally {
+      setCurrentUser(null);
+      setCartItems([]);
+      setPage('account');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
   };
 
   const handleList = () => {
@@ -1221,8 +1167,9 @@ function App() {
           onAccountCreated={(user) => {
             if (!user) return;
 
-            setCurrentUser(user);
-            const destination = getDashboardForRole(user.role);
+            const normalized = normalizeApiUser(user);
+            setCurrentUser(normalized);
+            const destination = getDashboardForRole(normalized.role_code || normalized.role);
             navigate(destination);
           }}
         />
