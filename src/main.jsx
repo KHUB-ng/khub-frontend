@@ -335,7 +335,7 @@ function App() {
       'settings', 'dashboard', 'driver-dashboard', 'provider-dashboard',
       'seller-dashboard', 'admin-dashboard', 'job-poster-dashboard',
       'orders', 'orders-bookings', 'referrals', 'messages', 'wallet',
-      'job-application', 'delivery-details', 'checkout', 'payment-success',
+      'job-application', 'delivery-details', 'ride-booking', 'checkout', 'payment-success',
       'cart', 'seller-listing', 'storefront', 'ride-tracking'
     ]);
     if (protectedPages.has(destination) && authLoading) {
@@ -349,6 +349,16 @@ function App() {
       return;
     }
 
+    const roleRoutes = {
+      'seller-dashboard': 'seller',
+      'driver-dashboard': 'driver',
+      'provider-dashboard': 'service_provider',
+      'job-poster-dashboard': 'job_poster',
+    };
+    if (roleRoutes[destination] && currentUser?.role_code !== roleRoutes[destination]) {
+      notify('This dashboard is not assigned to your current KHUB role.');
+      return;
+    }
     if (destination === 'admin-dashboard' && currentUser?.role_code !== 'admin') {
       notify('Administrator access is required for this workspace.');
       return;
