@@ -1,29 +1,106 @@
-import React, { useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import styles from './ChatPage.module.css';
+import { api } from './lib/api.js';
 
-const initialConversations = [
- {id:'ada', name:'Ada Studio', subtitle:'1 unread', preview:'Looking forward to our discovery call.', time:'11:12', ref:'KH-SV-2041', verified:true, unread:true,
-  context:'Booking KH-SV-2041 · Standard identity · ₦78,750 paid · Call Tue 13 Oct, 10:00 WAT', messages:[
-   {from:'them', text:'Hi Tomi! I’ve received your ÌRÈ Wellness brief. Are there any brands you’d like us to keep in mind?', time:'11:08 WAT'},
-   {from:'me', text:'Thank you, Ada. I’d love warm colours and a clean, natural feel. The references are in the brief.', time:'11:10 WAT', read:true},
-   {from:'them', text:'Perfect. Looking forward to our discovery call on Tuesday at 10:00 WAT.', time:'11:12 WAT'}]},
- {id:'nook', name:'Studio Nook', subtitle:'1 unread', preview:'Your chair is being prepared.', time:'10:58', ref:'KH-10482', verified:false, unread:true,
-  context:'Order KH-10482 · Lounge chair + wireless headphones · Paid ₦207,000', messages:[{from:'them',text:'Your chair is being prepared. We’ll update you when it is ready for dispatch.',time:'10:58 WAT'}]},
- {id:'support', name:'KHUB Support', subtitle:'', preview:'Refund update KH-RF-221', time:'Yesterday', ref:'KH-RF-221', verified:true, unread:false,
-  context:'Support ticket KH-RF-221 · Refund status', messages:[{from:'them',text:'Your refund is awaiting bank settlement. We’ll keep this conversation updated when the status changes.',time:'Yesterday'}]}
-];
-export default function ChatPage({onBack=()=>{},onNavigate=()=>{}}){
- const [conversations,setConversations]=useState(initialConversations); const [selectedId,setSelectedId]=useState('ada'); const [search,setSearch]=useState(''); const [draft,setDraft]=useState('Thanks, see you Tuesday!'); const [notice,setNotice]=useState(''); const [file,setFile]=useState(null); const [showArchived,setShowArchived]=useState(false);
- const selected=conversations.find(c=>c.id===selectedId)||conversations[0];
- const visible=useMemo(()=>conversations.filter(c=>`${c.name} ${c.ref} ${c.preview}`.toLowerCase().includes(search.toLowerCase())),[conversations,search]);
- const send=()=>{if(!draft.trim()&&!file){setNotice('Write a message or attach a file before sending.');return;} if(!draft.trim()){setNotice('File attached. Messaging is shown in demo mode.');return;}setConversations(prev=>prev.map(c=>c.id===selectedId?{...c,preview:draft.trim(),time:'Now',messages:[...c.messages,{from:'me',text:draft.trim(),time:'Now · Sent',read:false}],unread:false}:c));setDraft('');setFile(null);setNotice('Message added to this conversation. Connect the messaging service to deliver it to the recipient.');};
- return <div className={styles.page}>
-    <div style={{ marginBottom: 18 }}><button type="button" onClick={onBack} aria-label="Go back to the previous page" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, border: '1px solid #dce8df', background: '#fff', color: '#176b43', borderRadius: 999, padding: '10px 16px', fontWeight: 700, cursor: 'pointer', boxShadow: '0 2px 8px rgba(20,60,35,.06)' }}><span aria-hidden="true">←</span> Back</button></div><header className={styles.heading}><h1>Good work starts with a conversation.</h1><p>09 Personal hub / Chat inbox and conversation<br/>Your inbox · {conversations.filter(c=>c.unread).length} unread · Keep payments and project decisions on KHUB.</p></header>
- <div className={styles.layout}><aside className={styles.inbox}><h2>Inbox</h2><label className={styles.search}><span>Search conversations</span><input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search names or references" aria-label="Search conversations"/></label>
- <div className={styles.conversationList}>{visible.map(c=><button key={c.id} className={`${styles.conversation} ${selectedId===c.id?styles.selected:''}`} onClick={()=>{setSelectedId(c.id);setConversations(prev=>prev.map(x=>x.id===c.id?{...x,unread:false}:x));setNotice('')}}><strong>{c.unread?'◉ ':''}{c.name}{c.unread?` · ${c.subtitle}`:''}</strong><span>{c.preview} · {c.time}</span>{selectedId===c.id&&<small>✓ Selected · {c.ref}</small>}</button>)}</div>
- <button className={styles.link} onClick={()=>{setShowArchived(v=>!v);setNotice(showArchived?'Archived messages hidden.':'Archived messages are not available in this demo.')}}>{showArchived?'Hide archived messages':'View archived messages'}</button>
- </aside><main className={styles.thread}><h2>{selected.name}{selected.id==='ada'?' / Ada Okafor':''}</h2><p className={styles.meta}>{selected.verified?'✓ Verified provider · Usually replies in 2h':'KHUB conversation'} </p><p>{selected.context}</p><button className={styles.link} onClick={()=>selected.ref.startsWith('KH-SV')?onNavigate('orders-bookings'):selected.ref.startsWith('KH-10')?onNavigate('orders'):onNavigate('support')}>{selected.ref.startsWith('KH-SV')?'View booking':selected.ref.startsWith('KH-10')?'View order':'View support ticket'}</button>
- <div className={styles.date}>Today · 11 October 2026</div><div className={styles.messages}>{selected.messages.map((m,i)=><div key={i} className={`${styles.message} ${m.from==='me'?styles.mine:styles.theirs}`}><p>{m.text}</p><small>{m.from==='me'?'Tomi':selected.name} · {m.time}{m.read?' · ✓✓ Read':''}</small></div>)}</div>
- <label className={styles.composer}><span>Message {selected.name.split(' ')[0]}</span><textarea value={draft} onChange={e=>setDraft(e.target.value)} placeholder="Write a message..." rows={2}/></label><div className={styles.actions}><label className={styles.link} htmlFor="chat-file">Attach a file</label><input id="chat-file" className={styles.fileInput} type="file" accept=".pdf,.jpg,.jpeg,.png" onChange={e=>setFile(e.target.files?.[0]||null)}/>{file&&<span className={styles.fileName}>{file.name}</span>}<button className={styles.primary} onClick={send}>Send message</button></div><p className={styles.footer}>PDF / JPG / PNG up to 10 MB · Report or block contact</p>{notice&&<div className={styles.notice}>{notice}</div>}
- </main></div><button className={styles.back} onClick={onBack}>Back to dashboard</button></div>
+const time = value => value ? new Date(value).toLocaleString('en-NG') : '—';
+
+export default function ChatPage({ user = {}, onBack=()=>{}, onNavigate=()=>{} }) {
+  const [conversations,setConversations]=useState([]);
+  const [selectedId,setSelectedId]=useState('');
+  const [messages,setMessages]=useState([]);
+  const [search,setSearch]=useState('');
+  const [draft,setDraft]=useState('');
+  const [notice,setNotice]=useState('');
+  const [error,setError]=useState('');
+  const [file,setFile]=useState(null);
+  const [loading,setLoading]=useState(true);
+  const [sending,setSending]=useState(false);
+
+  const loadConversations=useCallback(async()=>{
+    const rows=await api.get('/conversations');
+    const list=Array.isArray(rows)?rows:rows?.items||[];
+    setConversations(list);
+    if(!selectedId&&list.length)setSelectedId(list[0].pid);
+    return list;
+  },[selectedId]);
+
+  const loadMessages=useCallback(async pid=>{
+    if(!pid)return;
+    const [rows]=await Promise.all([
+      api.get('/conversations/'+encodeURIComponent(pid)+'/messages?limit=50'),
+      api.post('/conversations/'+encodeURIComponent(pid)+'/read',{}),
+    ]);
+    setMessages(Array.isArray(rows)?rows:rows?.items||[]);
+    setConversations(prev=>prev.map(item=>item.pid===pid?{...item,unread_count:0}:item));
+  },[]);
+
+  useEffect(()=>{
+    let active=true;
+    setLoading(true);
+    api.get('/conversations').then(rows=>{
+      if(!active)return;
+      const list=Array.isArray(rows)?rows:rows?.items||[];
+      setConversations(list);
+      setSelectedId(current=>current||list[0]?.pid||'');
+    }).catch(err=>{if(active)setError(err?.message||'Your conversations could not be loaded.');})
+      .finally(()=>{if(active)setLoading(false);});
+    return()=>{active=false;};
+  },[]);
+
+  useEffect(()=>{
+    if(!selectedId)return;
+    let active=true;
+    api.get('/conversations/'+encodeURIComponent(selectedId)+'/messages?limit=50')
+      .then(rows=>{if(active)setMessages(Array.isArray(rows)?rows:rows?.items||[]);})
+      .then(()=>api.post('/conversations/'+encodeURIComponent(selectedId)+'/read',{}))
+      .then(()=>{if(active)setConversations(prev=>prev.map(item=>item.pid===selectedId?{...item,unread_count:0}:item));})
+      .catch(err=>{if(active)setError(err?.message||'Messages could not be loaded.');});
+    return()=>{active=false;};
+  },[selectedId]);
+
+  const selected=conversations.find(item=>item.pid===selectedId)||null;
+  const visible=useMemo(()=>conversations.filter(item=>(item.other_user_name+' '+(item.ref_pid||'')+' '+(item.last_message?.body||'')).toLowerCase().includes(search.toLowerCase())),[conversations,search]);
+
+  const send=async()=>{
+    if(sending||(!draft.trim()&&!file))return;
+    if(!selected){setError('Select an existing conversation before sending a message.');return;}
+    setSending(true);setError('');setNotice('');
+    try{
+      let attachmentKey;
+      if(file){
+        const form=new FormData();form.append('file',file);
+        const uploaded=await api.upload('/conversations/'+encodeURIComponent(selected.pid)+'/attachments',form);
+        attachmentKey=uploaded?.attachment_key;
+      }
+      const sent=await api.post('/conversations/'+encodeURIComponent(selected.pid)+'/messages',{body:draft.trim(),attachment_key:attachmentKey});
+      setMessages(prev=>[...prev,sent]);
+      setDraft('');setFile(null);
+      setNotice('Message sent to KHUB. Refresh the thread to retrieve the latest replies.');
+      await loadConversations();
+    }catch(err){setError(err?.message||'Message could not be sent.');}
+    finally{setSending(false);}
+  };
+
+  return <div className={styles.page}>
+    <div style={{marginBottom:18}}><button type="button" onClick={onBack} aria-label="Go back" style={{display:'inline-flex',alignItems:'center',gap:8,border:'1px solid #dce8df',background:'#fff',color:'#176b43',borderRadius:999,padding:'10px 16px',fontWeight:700,cursor:'pointer'}}>← Back</button></div>
+    <header className={styles.heading}><h1>Good work starts with a conversation.</h1><p>09 Personal hub / Chat inbox and conversation<br/>Your inbox · {conversations.reduce((sum,item)=>sum+Number(item.unread_count||0),0)} unread · Live KHUB conversations.</p></header>
+    <div className={styles.layout}>
+      <aside className={styles.inbox}><h2>Inbox</h2><label className={styles.search}><span>Search conversations</span><input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search names or references"/></label>
+        <div className={styles.conversationList}>{visible.map(item=><button key={item.pid} className={`${styles.conversation} ${selectedId===item.pid?styles.selected:''}`} onClick={()=>{setSelectedId(item.pid);setNotice('');setError('');}}><strong>{Number(item.unread_count)>0?'◉ ':''}{item.other_user_name}{Number(item.unread_count)>0?' · '+item.unread_count+' unread':''}</strong><span>{item.last_message?.body||'No messages yet'} · {time(item.last_message?.created_at||item.created_at)}</span>{selectedId===item.pid&&<small>✓ Selected · {item.ref_pid||item.pid}</small>}</button>)}</div>
+        {loading&&<p>Loading conversations…</p>}{!loading&&visible.length===0&&<p>No conversations found. Start a conversation from a member or listing contact action.</p>}
+        <button className={styles.link} onClick={loadConversations}>Refresh inbox</button>
+      </aside>
+      <main className={styles.thread}>
+        {selected?<><h2>{selected.other_user_name}</h2><p className={styles.meta}>KHUB member · Conversation protected by participant permissions</p><p>{selected.ref_table&&selected.ref_pid?'Related to '+selected.ref_table+' · '+selected.ref_pid:'General conversation'}</p>
+          <div className={styles.date}>Conversation messages</div>
+          <div className={styles.messages}>{messages.map(message=><div key={message.pid||message.id} className={`${styles.message} ${message.sender_pid===user.pid?styles.mine:styles.theirs}`}><p>{message.body}</p>{message.attachment_url&&<a href={message.attachment_url} target="_blank" rel="noreferrer">Open attachment</a>}<small>{message.sender_pid===user.pid?'You':selected.other_user_name} · {time(message.created_at)}</small></div>)}</div>
+          <label className={styles.composer}><span>Message {selected.other_user_name}</span><textarea value={draft} onChange={e=>setDraft(e.target.value)} placeholder="Write a message..." rows={2}/></label>
+          <div className={styles.actions}><label className={styles.link} htmlFor="chat-file">Attach a file</label><input id="chat-file" className={styles.fileInput} type="file" accept=".pdf,.jpg,.jpeg,.png" onChange={e=>setFile(e.target.files?.[0]||null)}/>{file&&<span className={styles.fileName}>{file.name}</span>}<button className={styles.primary} disabled={sending||(!draft.trim()&&!file)} onClick={send}>{sending?'Sending…':'Send message'}</button><button className={styles.link} onClick={()=>loadMessages(selected.pid)}>Refresh thread</button></div>
+        </>:<div className={styles.notice}>Select a conversation to view messages. Contact a listing owner to start a new conversation.</div>}
+        <p className={styles.footer}>Messages are stored by KHUB. Never send passwords, OTPs, card PINs or bank login details in chat.</p>
+        {error&&<div className={styles.notice} role="alert">{error}</div>}{notice&&<div className={styles.notice} role="status">{notice}</div>}
+      </main>
+    </div>
+    <button className={styles.back} onClick={onBack}>Back to dashboard</button>
+  </div>;
 }

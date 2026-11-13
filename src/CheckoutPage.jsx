@@ -1,22 +1,74 @@
-import React, { useState } from 'react';
-import { CheckCircle2, ShieldCheck } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { ShieldCheck } from 'lucide-react';
 import styles from './CheckoutPage.module.css';
+import { api } from './lib/api.js';
+import { walletApi } from './lib/wallet.js';
 
-const money = value => `₦${Number(value).toLocaleString('en-NG')}`;
-export default function CheckoutPage({ onSuccess, onNavigate, onBack, user, deliveryDetails }) {
-  const [method, setMethod] = useState('Bank transfer');
-  const [transferMade, setTransferMade] = useState(false);
-  const total = deliveryDetails?.total ?? 207000;
-  const deliveryFee = deliveryDetails?.deliveryFee ?? 4000;
+const money = value => `₦${Number(value || 0).toLocaleString('en-NG')}`;
+
+export default function CheckoutPage({ onSuccess, onNavigate, onBack, user, cartItems = [] }) {
+  const [wallet, setWallet] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [placing, setPlacing] = useState(false);
+  const [error, setError] = useState('');
+  const [notice, setNotice] = useState('');
+
+  useEffect(() => {
+    let active = true;
+    walletApi.summary().then(value => { if (active) setWallet(value); })
+      .catch(err => { if (active) setError(err?.message || 'Wallet balance could not be checked.'); })
+      .finally(() => { if (active) setLoading(false); });
+    return () => { active = false; };
+  }, []);
+
+  const total = cartItems.reduce((sum, item) => sum + Number(item.price || 0) * Number(item.qty || 1), 0);
+  const placeOrder = async () => {
+    if (!cartItems.length) { setError('Your cart is empty. Add a live listing before checkout.'); return; }
+    if (cartItems.some(item => !item?.id)) { setError('A cart item is missing its KHUB listing reference. Remove it and add the live listing again.'); return; }
+    setPlacing(true); setError(''); setNotice('');
+    try {
+      const result = await api.post('/orders/batch', {
+        items: cartItems.map(item => ({ listing_pid: item.id, quantity: Number(item.qty || 1) })),
+      });
+      const orders = result?.orders || [];
+      if (!orders.length) throw new Error('KHUB did not return any created orders.');
+      onSuccess?.({
+        orders,
+        pid: orders[0].pid,
+        status: 'paid_escrow',
+        amount_kobo: orders.reduce((sum, order) => sum + Number(order.amount_kobo || 0), 0),
+        commission_kobo: orders.reduce((sum, order) => sum + Number(order.commission_kobo || 0), 0),
+        seller_net_kobo: orders.reduce((sum, order) => sum + Number(order.seller_net_kobo || 0), 0),
+      });
+    } catch (err) {
+      const message = err?.message || 'Order could not be placed.';
+      setError(message);
+      if (/insufficient funds/i.test(message)) setNotice('Fund your KHUB wallet using Flutterwave, then return here to place the order.');
+    } finally { setPlacing(false); }
+  };
+
   return <div className={styles.page}>
-    <header className={styles.header}><a href="#top" onClick={e=>{e.preventDefault();onNavigate('home')}} className={styles.logo}>KHUB</a><nav><button onClick={()=>onNavigate('discover')}>Discover</button><button onClick={()=>onNavigate('shop')}>Shop</button><button onClick={()=>onNavigate('rentals')}>Rent</button><button onClick={()=>onNavigate('services')}>Services</button><button onClick={()=>onNavigate('jobs')}>Jobs</button><button onClick={()=>onNavigate('city')}>Rides &amp; delivery</button></nav><button className={styles.list} onClick={()=>onNavigate('account')}>List on KHUB</button></header>
-    <main className={styles.main}><div className={styles.eyebrow}>07 / COMMERCE / PAYMENT METHOD</div><h1>Choose how to pay</h1><p className={styles.subtitle}>Secure checkout · Order KH-10482 · Total {money(total)}</p>
-      <div className={styles.tabs}>{['Bank transfer','Debit card','KHUB wallet'].map(item=><button key={item} onClick={()=>{setMethod(item);setTransferMade(false)}} className={method===item?styles.activeTab:''}>{item}</button>)}</div>
-      <div className={styles.layout}><div className={styles.left}>
-        <section className={styles.card}><h2>{method} · Selected</h2>{method==='Bank transfer'?<><p className={styles.muted}>Transfer the exact amount to this order-specific account. We confirm payment automatically.</p><div className={styles.field}><label>Account name</label><p>KHUB / {user?.name || 'Tomi Adeyemi'} · Illustrative account</p></div><div className={styles.field}><label>Bank</label><p>KHUB payment partner · Example only</p></div><div className={styles.field}><label>Account number</label><p>000 104 8207 · Copy account number</p></div><h3 className={styles.amount}>{money(total)}</h3><span className={styles.pill}>Account expires in 29:42</span><button className={styles.primary} onClick={()=>{setTransferMade(true);onSuccess({method:'Bank transfer',total})}}>{transferMade?'Payment confirmation submitted':'I’ve made the transfer'}</button><p className={styles.note}>Don’t refresh to create another payment. We’ll update this order after confirmation.</p></>:method==='Debit card'?<><div className={styles.inputBox}><label>Cardholder name</label><p>{user?.name || 'Tomi Adeyemi'}</p></div><div className={styles.inputBox}><label>Card number</label><p>•••• •••• •••• 4242</p></div><div className={styles.split}><div className={styles.inputBox}><label>Expiry date</label><p>10 / 28</p></div><div className={styles.inputBox}><label>CVV</label><p>•••</p></div></div><button className={styles.outline} onClick={()=>onSuccess({method:'Debit card',total})}>Pay {money(total)} by card</button><p className={styles.note}>Demo checkout only. No card details are collected or sent.</p></>:<><p>Available ₦86,500 · Shortfall ₦120,500</p><button className={styles.disabled} disabled>Pay with wallet</button><button className={styles.outline} onClick={()=>onNavigate('wallet')}>Top up wallet</button></>}</section>
-        <section className={styles.card}><h2>Debit card · Alternative method</h2><div className={styles.inputBox}><label>Cardholder name</label><p>{user?.name || 'Tomi Adeyemi'}</p></div><div className={styles.inputBox}><label>Card number</label><p>•••• •••• •••• 4242</p></div><div className={styles.split}><div className={styles.inputBox}><label>Expiry date</label><p>10 / 28</p></div><div className={styles.inputBox}><label>CVV</label><p>•••</p></div></div><button className={styles.outline} onClick={()=>onSuccess({method:'Debit card',total})}>Pay {money(total)} by card</button></section>
-        <section className={styles.card}><h2>KHUB wallet · Alternative method</h2><p>Available ₦86,500 · Shortfall ₦120,500</p><button className={styles.disabled} disabled>Pay with wallet</button><button className={styles.outline} onClick={()=>onNavigate('wallet')}>Top up wallet</button></section>
-      </div><aside className={styles.right}><section className={styles.card}><h2>Order summary</h2><p>Subtotal (2 items) · ₦203,000<br/>Lounge chair + wireless headphones</p><p>Delivery fee · {money(deliveryFee)}<br/>{deliveryDetails?.city || 'Lekki, Lagos'} • {deliveryDetails?.delivery === 'pickup' ? 'pickup' : 'standard delivery'}</p><hr/><h3>Total {money(total)}</h3><small>No additional platform fee on this order. Prices include applicable taxes.</small><button className={styles.primary} onClick={()=>onNavigate('orders-bookings')}>Review order</button><small>Protected payment · Get help with a dispute</small></section><section className={styles.tip}><strong>Safe payment reminder</strong><p>KHUB never asks for your card PIN or OTP in chat. Complete any bank authentication only in the bank’s secure prompt.</p></section></aside></div></main>
-    <footer className={styles.footer}><span>© KHUB · Privacy · Terms · Illustrative marketplace content</span><span>Trust &amp; safety　/　Contact support</span></footer>
+    <header className={styles.header}><button className={styles.logo} onClick={()=>onNavigate('home')}>KHUB</button><nav><button onClick={()=>onNavigate('discover')}>Discover</button><button onClick={()=>onNavigate('shop')}>Shop</button><button onClick={()=>onNavigate('rentals')}>Rent</button><button onClick={()=>onNavigate('services')}>Services</button><button onClick={()=>onNavigate('jobs')}>Jobs</button></nav><button className={styles.list} onClick={()=>onNavigate('account')}>Account</button></header>
+    <main className={styles.main}>
+      <div className={styles.eyebrow}>07 / COMMERCE / SECURE CHECKOUT</div><h1>Review your order.</h1><p className={styles.subtitle}>Orders are paid from your KHUB wallet and protected by the existing escrow workflow.</p>
+      {error && <div className={styles.note} role="alert">{error}</div>}
+      {notice && <div className={styles.note} role="status">{notice}</div>}
+      <div className={styles.layout}>
+        <section className={styles.left}>
+          <section className={styles.card}><h2>Items in this checkout</h2>
+            {cartItems.map(item=><div className={styles.field} key={item.id}><strong>{item.name}</strong><p>Quantity {item.qty} · {money(item.price)} each · Estimated {money(Number(item.price || 0) * Number(item.qty || 1))}</p></div>)}
+            {!cartItems.length && <p>Your cart is empty. Add a live product listing before checkout.</p>}
+            {cartItems.length > 1 && <p className={styles.note}>All cart items are checked and charged together by the backend. If any item is unavailable or funds are insufficient, the entire checkout is rejected.</p>}
+          </section>
+          <section className={styles.card}><h2>Payment method</h2><div className={styles.field}><ShieldCheck size={18}/><strong>KHUB wallet · escrow protected</strong><p>Place the order only after the backend confirms sufficient wallet funds. The seller receives funds after the order's confirmation workflow completes.</p></div>
+            <p>Available wallet balance: <strong>{loading ? 'Checking…' : wallet?.balance_display || money(wallet?.balance_kobo)}</strong></p>
+            <button className={styles.outline} onClick={()=>onNavigate('wallet')}>Fund wallet with Flutterwave</button>
+          </section>
+          <button className={styles.primary} disabled={placing || loading || cartItems.length === 0} onClick={placeOrder}>{placing?'Placing secure order…':'Place order with KHUB wallet'}</button>
+          <button className={styles.link} onClick={onBack}>Back to cart</button>
+        </section>
+        <aside className={styles.right}><section className={styles.card}><h2>Order summary</h2><p>Items · {cartItems.reduce((n,i)=>n+Number(i.qty||1),0)}</p><p>Estimated subtotal · {money(total)}</p><hr/><h3>Estimated total · {money(total)}</h3><small>The server recalculates the final amount and applicable commission from the listing. No card or bank transfer is processed directly by this page.</small></section><section className={styles.tip}><strong>Protected transaction</strong><p>KHUB debits the buyer wallet into escrow. The seller payout and platform commission are recorded when the order is completed.</p></section></aside>
+      </div>
+    </main><footer className={styles.footer}><span>© KHUB · Privacy · Terms</span><span>Trust &amp; safety / Contact support</span></footer>
   </div>;
 }

@@ -1,6 +1,8 @@
 
 import logo from './assets/khub_green-removebg-preview.png';
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
+import { api } from './lib/api.js';
+import { authApi } from './lib/auth.js';
 import { createRoot } from 'react-dom/client';
 import {
   Search,
@@ -50,6 +52,7 @@ import WalletPage from './WalletPage.jsx';
 import PublicStorefrontPage from './PublicStorefrontPage.jsx';
 import CustomerDashboard from './CustomerDashboard.jsx';
 import DriverDashboard from './DriverDashboard.jsx';
+import AgentDashboard from './AgentDashboard.jsx';
 import RideTrackingPage from './RideTrackingPage.jsx';
 import RideBookingPage from './RideBookingPage.jsx';
 import ServiceProviderDashboard from './ServiceProviderDashboard.jsx';
@@ -70,98 +73,9 @@ import RentalsPage from './RentalsPage.jsx';
 import ServicesPage from './ServicesPage.jsx';
 import FooterContentPage, { footerRoutes } from './FooterContentPage.jsx';
 import AboutUsPage from './AboutUsPage.jsx';
+import SponsoredAds from './SponsoredAds.jsx';
+import NewTrendingItems from './NewTrendingItems.jsx';
 
-
-const products = [
-  {
-    id: 1,
-    name: 'The Lekki lounge chair',
-    category: 'Advertised · Lekki, Lagos · New',
-    seller: 'Verified seller',
-    sellerName: 'Studio Nook',
-    price: '₦145,000',
-    numericPrice: 145000,
-    image: chair,
-    kind: 'Shop',
-    location: 'Lekki, Lagos',
-    condition: 'Brand new',
-    availability: 'Available',
-    description:
-      'Bring comfort and character into your living space with this beautifully styled lounge chair. Its contemporary design makes it suitable for living rooms, reading corners and modern office spaces.',
-    features: [
-      'Contemporary lounge design',
-      'Suitable for living rooms and office spaces',
-      'Locally listed by a verified seller',
-      'Delivery options available at checkout',
-    ],
-  },
-  {
-    id: 2,
-    name: 'Wireless headphones',
-    category: 'Identity verified · Ikeja, Lagos · New',
-    seller: 'Identity verified seller',
-    sellerName: 'Sound House',
-    price: '₦58,000',
-    numericPrice: 58000,
-    image: headphones,
-    kind: 'Shop',
-    location: 'Ikeja, Lagos',
-    condition: 'Brand new',
-    availability: 'Available',
-    description:
-      'Enjoy your favourite audio with these wireless headphones. A convenient everyday accessory for work, entertainment, study and travel.',
-    features: [
-      'Wireless headphone design',
-      'Suitable for everyday listening',
-      'New listing',
-      'Delivery options available at checkout',
-    ],
-  },
-  {
-    id: 3,
-    name: 'Walnut bedside lamp',
-    category: 'Local maker · Wuse, Abuja · Handmade',
-    seller: 'Local maker',
-    sellerName: 'Wuse Home Studio',
-    price: '₦32,000',
-    numericPrice: 32000,
-    image: lamp,
-    kind: 'Shop',
-    location: 'Wuse, Abuja',
-    condition: 'Handmade',
-    availability: 'Available',
-    description:
-      'Add a warm finishing touch to your bedroom or living area with this walnut bedside lamp. Its simple styling makes it an attractive addition to contemporary interiors.',
-    features: [
-      'Walnut-inspired finish',
-      'Handmade listing',
-      'Suitable for bedside and living spaces',
-      'Delivery options available at checkout',
-    ],
-  },
-  {
-    id: 4,
-    name: 'Camera kit for rent',
-    category: 'Rental · Yaba, Lagos · Dates available',
-    seller: 'Rental provider',
-    sellerName: 'Yaba Camera Rentals',
-    price: '₦18,000 / day',
-    numericPrice: 18000,
-    image: camera,
-    kind: 'Rent',
-    location: 'Yaba, Lagos',
-    condition: 'Rental equipment',
-    availability: 'Dates available',
-    description:
-      'Need camera equipment for a project, event or creative production? This camera kit is listed for short-term rental. Contact the provider to confirm the equipment details and available dates before booking.',
-    features: [
-      'Camera kit available for rental',
-      'Daily rental pricing',
-      'Availability subject to confirmation',
-      'Confirm rental dates before booking',
-    ],
-  },
-];
 
 const categories = [
   {
@@ -197,33 +111,45 @@ const categories = [
 ];
 
 function getDashboardForRole(role) {
-  switch (role) {
-    case 'Buyer':
-      return 'dashboard';
-    case 'Seller':
-      return 'seller-dashboard';
-    case 'Driver':
-      return 'driver-dashboard';
-    case 'Provider':
-      return 'provider-dashboard';
-    case 'Job poster':
-      return 'job-poster-dashboard';
-    case 'Job seeker':
-      return 'job-listings';
-    default:
-      return 'dashboard';
+  switch (String(role || '').toLowerCase()) {
+    case 'buyer': return 'dashboard';
+    case 'seller': return 'seller-dashboard';
+    case 'driver': return 'driver-dashboard';
+    case 'logistics_agent': return 'agent-dashboard';
+    case 'provider':
+    case 'service_provider': return 'provider-dashboard';
+    case 'job poster':
+    case 'job_poster':
+    case 'jobposter': return 'job-poster-dashboard';
+    case 'job seeker':
+    case 'job_seeker': return 'job-listings';
+    case 'admin': return 'admin-dashboard';
+    default: return 'dashboard';
   }
+}
+
+function normalizeApiUser(user) {
+  if (!user) return null;
+  const roles = {
+    buyer: 'Buyer',
+    seller: 'Seller',
+    driver: 'Driver',
+    service_provider: 'Provider',
+    job_poster: 'Job poster',
+    jobposter: 'Job poster',
+    admin: 'Admin',
+  };
+  return { ...user, role_code: user.role, role: roles[String(user.role || '').toLowerCase()] || user.role };
 }
 
 function App() {
   const [page, setPage] = useState('home');
 
-  const [currentUser, setCurrentUser] = useState({
-    name: 'Tomi Adeyemi',
-    email: 'tomi.adeyemi@example.com',
-    phone: '+234 803 000 1428',
-    role: 'Buyer',
-  });
+  const [currentUser, setCurrentUser] = useState(null);
+  const [authLoading, setAuthLoading] = useState(true);
+  const [products, setProducts] = useState([]);
+  const [listingsLoading, setListingsLoading] = useState(true);
+  const [listingsError, setListingsError] = useState('');
 
   const [saved, setSaved] = useState([]);
   const [savedJobs, setSavedJobs] = useState([]);
@@ -231,55 +157,62 @@ function App() {
   const [search, setSearch] = useState('');
   const [globalSearch, setGlobalSearch] = useState('');
   const [mobileMenu, setMobileMenu] = useState(false);
-  const [modal, setModal] = useState(null);
   const [toast, setToast] = useState('');
-  const [submitted, setSubmitted] = useState(false);
 
   // Stores the product currently being viewed.
   const [selectedProduct, setSelectedProduct] = useState(null);
 
-  const [paymentDetails, setPaymentDetails] = useState({
-    method: 'Bank transfer',
-    total: 207000,
-  });
+  const [paymentDetails, setPaymentDetails] = useState(null);
+  const [deliveryDetails, setDeliveryDetails] = useState(null);
+  const [cartItems, setCartItems] = useState([]);
+  const [selectedJob, setSelectedJob] = useState(null);
+  const [activeRidePid, setActiveRidePid] = useState('');
 
-  const [deliveryDetails, setDeliveryDetails] = useState({
-    deliveryFee: 4000,
-    total: 207000,
-    delivery: 'standard',
-  });
+  useEffect(() => {
+    let active = true;
+    authApi.getCurrentUser()
+      .then((user) => { if (active) setCurrentUser(normalizeApiUser(user)); })
+      .catch(() => { if (active) setCurrentUser(null); })
+      .finally(() => { if (active) setAuthLoading(false); });
 
-  const [cartItems, setCartItems] = useState([
-    {
-      id: 1,
-      name: 'The Lekki lounge chair',
-      seller: 'Studio Nook · Forest green',
-      price: 145000,
-      image: chair,
-      qty: 1,
-      saved: false,
-    },
-    {
-      id: 2,
-      name: 'Wireless headphones',
-      seller: 'Sound House · Cream',
-      price: 58000,
-      image: headphones,
-      qty: 1,
-      saved: false,
-    },
-  ]);
+    api.get('/listings?page=1&page_size=24', { auth: false })
+      .then((payload) => {
+        if (!active) return;
+        const rows = Array.isArray(payload) ? payload : (payload?.items || []);
+        const mapped = rows.map((listing) => {
+          const vertical = listing.vertical;
+          const amountKobo = listing.effective_price_kobo ?? listing.price_kobo ?? 0;
+          const kind = vertical === 'rental' ? 'Rent' : vertical === 'service' ? 'Services' : vertical === 'job' ? 'Jobs' : 'Shop';
+          return {
+            id: listing.pid,
+            pid: listing.pid,
+            name: listing.title,
+            category: [listing.category, listing.location].filter(Boolean).join(' · '),
+            seller: 'KHUB marketplace listing',
+            sellerName: 'KHUB member',
+            price: listing.price_display || (amountKobo ? `₦${(amountKobo / 100).toLocaleString('en-NG')}` : 'Contact provider'),
+            numericPrice: amountKobo / 100,
+            image: null,
+            kind,
+            location: listing.location || 'Nigeria',
+            condition: listing.attributes?.condition || 'Listed on KHUB',
+            availability: listing.status,
+            description: listing.description,
+            features: [],
+            vertical,
+            priceKobo: amountKobo,
+          };
+        });
+        setProducts(mapped);
+        setListingsError('');
+      })
+      .catch((error) => {
+        if (active) setListingsError(error?.message || 'Marketplace listings could not be loaded.');
+      })
+      .finally(() => { if (active) setListingsLoading(false); });
 
-  const [selectedJob, setSelectedJob] = useState({
-    title: 'Product designer',
-    company: 'Cedar Digital',
-    reference: 'KH-JB-3107',
-    salary: '₦450,000–₦650,000 / month',
-    location: 'Lagos',
-    arrangement: 'Hybrid',
-    type: 'Full-time',
-    closes: '25 Oct 2026',
-  });
+    return () => { active = false; };
+  }, []);
 
   const filteredProducts = useMemo(
     () =>
@@ -294,7 +227,7 @@ function App() {
             .toLowerCase()
             .includes(search.toLowerCase())
       ),
-    [activeCategory, search]
+    [activeCategory, search, products]
   );
 
   const notify = (message) => {
@@ -309,13 +242,14 @@ function App() {
     setMobileMenu(false);
   };
 
-  const openModal = (
-    title,
-    description,
-    action = 'Continue'
-  ) => {
-    setSubmitted(false);
-    setModal({ title, description, action });
+  const openModal = (title) => {
+    if (!currentUser) {
+      navigate('account');
+      notify('Sign in to contact a KHUB member.');
+      return;
+    }
+    notify(`${title}: continue securely in KHUB messages.`);
+    navigate('messages');
   };
 
   const toggleSaved = (id) =>
@@ -380,12 +314,7 @@ function App() {
     }
 
     addProductToCart(product, false);
-    navigate('delivery-details');
-  };
-
-  const onSubmit = (e) => {
-    e.preventDefault();
-    setSubmitted(true);
+    navigate('checkout');
   };
 
   const submitGlobalSearch = (event) => {
@@ -407,6 +336,39 @@ function App() {
 
   const navigate = (destination) => {
     setMobileMenu(false);
+    const protectedPages = new Set([
+      'settings', 'dashboard', 'driver-dashboard', 'agent-dashboard', 'provider-dashboard',
+      'seller-dashboard', 'admin-dashboard', 'job-poster-dashboard',
+      'orders', 'orders-bookings', 'referrals', 'messages', 'wallet',
+      'job-application', 'delivery-details', 'ride-booking', 'checkout', 'payment-success',
+      'cart', 'seller-listing', 'storefront', 'ride-tracking'
+    ]);
+    if (protectedPages.has(destination) && authLoading) {
+      notify('Checking your KHUB session. Please try again in a moment.');
+      return;
+    }
+    if (protectedPages.has(destination) && !currentUser) {
+      setPage('account');
+      notify('Sign in to access this part of KHUB.');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
+
+    const roleRoutes = {
+      'seller-dashboard': 'seller',
+      'driver-dashboard': 'driver',
+      'agent-dashboard': 'logistics_agent',
+      'provider-dashboard': 'service_provider',
+      'job-poster-dashboard': 'jobposter',
+    };
+    if (roleRoutes[destination] && currentUser?.role_code !== roleRoutes[destination]) {
+      notify('This dashboard is not assigned to your current KHUB role.');
+      return;
+    }
+    if (destination === 'admin-dashboard' && currentUser?.role_code !== 'admin') {
+      notify('Administrator access is required for this workspace.');
+      return;
+    }
 
     if (destination === 'home') {
       setPage('home');
@@ -466,6 +428,7 @@ function App() {
       destination === 'settings' ||
       destination === 'dashboard' ||
       destination === 'driver-dashboard' ||
+      destination === 'agent-dashboard' ||
       destination === 'provider-dashboard' ||
       destination === 'seller-dashboard' ||
       destination === 'admin-dashboard' ||
@@ -522,10 +485,14 @@ function App() {
     }
   };
 
-  const handleLogout = () => {
-    setCurrentUser(null);
-    setPage('account');
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+  const handleLogout = async () => {
+    try { await authApi.signOut(); }
+    finally {
+      setCurrentUser(null);
+      setCartItems([]);
+      setPage('account');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
   };
 
   const handleList = () => {
@@ -538,6 +505,7 @@ function App() {
       <>
         <SiteHeader
           page={page}
+          user={currentUser}
           onNavigate={navigate}
           onList={handleList}
           cartCount={cartItems.reduce(
@@ -557,6 +525,7 @@ function App() {
       <>
         <SiteHeader
           page={page}
+          user={currentUser}
           onNavigate={navigate}
           onList={handleList}
           cartCount={cartItems.reduce(
@@ -579,6 +548,7 @@ function App() {
       <>
         <SiteHeader
           page={page}
+          user={currentUser}
           onNavigate={navigate}
           onList={handleList}
           cartCount={cartItems.reduce(
@@ -591,6 +561,7 @@ function App() {
           onHome={() => navigate('home')}
           onRent={() => navigate('rentals')}
           onNavigate={navigate}
+          onAddToCart={addProductToCart}
         />
       </>
     );
@@ -602,6 +573,7 @@ function App() {
       <>
         <SiteHeader
           page={page}
+          user={currentUser}
           onNavigate={navigate}
           onList={handleList}
           cartCount={cartItems.reduce(
@@ -625,6 +597,7 @@ function App() {
       <>
         <SiteHeader
           page={page}
+          user={currentUser}
           onNavigate={navigate}
           onList={handleList}
           cartCount={cartItems.reduce(
@@ -648,6 +621,7 @@ function App() {
         page !== 'payment-success' &&
         page !== 'cart' &&
         page !== 'driver-dashboard' &&
+        page !== 'agent-dashboard' &&
         page !== 'provider-dashboard' &&
         page !== 'seller-dashboard' &&
         page !== 'settings' &&
@@ -1191,14 +1165,12 @@ function App() {
       ) : page === 'checkout' ? (
         <CheckoutPage
           user={currentUser}
-          deliveryDetails={deliveryDetails}
+          cartItems={cartItems}
           onNavigate={navigate}
-          onBack={() => navigate('delivery-details')}
-          onSuccess={(payment) => {
-            setPaymentDetails({
-              ...payment,
-              total: deliveryDetails.total,
-            });
+          onBack={() => navigate('cart')}
+          onSuccess={(order) => {
+            setPaymentDetails(order);
+            setCartItems([]);
             navigate('payment-success');
           }}
         />
@@ -1214,6 +1186,7 @@ function App() {
           initialQuery={globalSearch}
           onHome={() => navigate('home')}
           onAccount={() => navigate('account')}
+          onNavigate={navigate}
         />
       ) : page === 'account' ? (
         <AccountPage
@@ -1221,13 +1194,20 @@ function App() {
           onAccountCreated={(user) => {
             if (!user) return;
 
-            setCurrentUser(user);
-            const destination = getDashboardForRole(user.role);
+            const normalized = normalizeApiUser(user);
+            setCurrentUser(normalized);
+            const destination = getDashboardForRole(normalized.role_code || normalized.role);
             navigate(destination);
           }}
         />
       ) : page === 'dashboard' ? (
         <CustomerDashboard
+          user={currentUser}
+          onNavigate={navigate}
+          onLogout={handleLogout}
+        />
+      ) : page === 'agent-dashboard' ? (
+        <AgentDashboard
           user={currentUser}
           onNavigate={navigate}
           onLogout={handleLogout}
@@ -1289,6 +1269,11 @@ function App() {
               arrangement: job.arrangement,
               type: job.type,
               closes: job.closes,
+              pid: job.pid || job.id,
+              category: job.category,
+              description: job.description,
+              posted: job.posted,
+              level: job.level,
             });
 
             navigate('job-detail');
@@ -1299,6 +1284,7 @@ function App() {
           job={selectedJob}
           onBack={() => navigate('jobs')}
           onApply={() => navigate('job-application')}
+          onOpenJob={nextJob => setSelectedJob(nextJob)}
         />
       ) : page === 'job-application' ? (
         <JobApplicationPage
@@ -1413,6 +1399,7 @@ function App() {
         />
       ) : page === 'orders' ? (
         <OrdersPage
+          user={currentUser}
           onBack={() => navigate('orders-bookings')}
           onSupport={() => navigate('support')}
         />
@@ -1656,6 +1643,16 @@ function App() {
                 </span>
               </div>
 
+              <SponsoredAds placement="home" onSelect={item => {
+                if (item.vertical === 'product') {
+                  const amount = item.effective_price_kobo ?? item.price_kobo ?? 0;
+                  openProduct({ id: item.pid, pid: item.pid, name: item.title, title: item.title, kind: 'Shop', category: item.category, price: item.price_display || (amount ? `₦${(amount / 100).toLocaleString('en-NG')}` : 'Contact provider'), numericPrice: amount / 100, image: null, location: item.location || 'Nigeria', seller: 'KHUB marketplace seller', description: item.description, features: [], vertical: item.vertical });
+                } else navigate(item.vertical === 'rental' ? 'rentals' : item.vertical === 'service' ? 'services' : item.vertical === 'job' ? 'job-listings' : 'ride-booking');
+              }} />
+              <NewTrendingItems onSelect={item => {
+                const amount = item.effective_price_kobo ?? item.price_kobo ?? 0;
+                openProduct({ id: item.pid, pid: item.pid, name: item.title, title: item.title, kind: 'Shop', category: item.category, price: item.price_display || (amount ? `₦${(amount / 100).toLocaleString('en-NG')}` : 'Contact seller'), numericPrice: amount / 100, image: null, location: item.location || 'Nigeria', seller: 'KHUB marketplace seller', description: item.description, features: [], vertical: item.vertical });
+              }} />
               <div className={styles.productGrid}>
                 {filteredProducts.map((p) => (
                   <article
@@ -1677,7 +1674,7 @@ function App() {
                     style={{ cursor: 'pointer' }}
                   >
                     <div className={styles.productImage}>
-                      <img src={p.image} alt={p.name} />
+                      {p.image ? <img src={p.image} alt={p.name} /> : <div className={styles.productImageFallback}>No image uploaded</div>}
 
                       <button
                         type="button"
@@ -1788,149 +1785,52 @@ function App() {
 
             <section className={styles.section} id="rent">
               <div className={styles.sectionHeading}>
-                <h2>Space for what’s next</h2>
-                <p>
-                  From a weekend stay to the tools for your next big idea.
-                </p>
+                <h2>Spaces and equipment to rent</h2>
+                <p>Current rental listings published by KHUB members.</p>
               </div>
-
-              <div className={styles.featureRow}>
-                <img
-                  className={styles.featureImage}
-                  src={rental}
-                  alt="A sunlit contemporary apartment with a comfortable living room"
-                />
-
-                <div className={styles.featurePanel}>
-                  <span className={styles.tag}>
-                    Rental · Lekki, Lagos
-                  </span>
-
-                  <h3>A light-filled place to pause.</h3>
-
-                  <p>
-                    Furnished one-bedroom apartment. Wi-Fi, workspace and
-                    flexible short stays.
-                  </p>
-
-                  <strong className={styles.priceLarge}>
-                    ₦65,000 / night
-                  </strong>
-
-                  <small>
-                    Refundable deposit ₦100,000 · Fees shown before booking
-                  </small>
-
-                  <button
-                    className={styles.primary}
-                    onClick={() => navigate('rentals')}
-                  >
-                    Explore rentals
-                  </button>
-                </div>
+              <div className={styles.productGrid}>
+                {products.filter(item => item.kind === 'Rent').slice(0, 3).map(item => (
+                  <article className={styles.productCard} key={item.id} onClick={() => openProduct(item)}>
+                    <div className={styles.productImage}><img src={item.image} alt={item.name} /></div>
+                    <div className={styles.productInfo}><h3>{item.name}</h3><p>{item.category}</p><strong>{item.price}</strong></div>
+                  </article>
+                ))}
+                {products.filter(item => item.kind === 'Rent').length === 0 && <p>No active rental listings are available right now.</p>}
               </div>
+              <button className={styles.primary} onClick={() => navigate('rentals')}>Explore rentals</button>
             </section>
 
             <section className={styles.section} id="services">
               <div className={styles.sectionHeading}>
-                <h2>Expertise, a conversation away</h2>
-                <p>
-                  Find a provider who understands the work you want to do.
-                </p>
+                <h2>Services from KHUB providers</h2>
+                <p>Explore real services currently listed on the platform.</p>
               </div>
-
-              <div
-                className={`${styles.featureRow} ${styles.reverseOnMobile}`}
-              >
-                <img
-                  className={styles.featureImage}
-                  src={service}
-                  alt="A creative professional working on a design project"
-                />
-
-                <div className={styles.featurePanel}>
-                  <span className={styles.tag}>
-                    Creative services
-                  </span>
-
-                  <h3>Brand identity by Ada Studio</h3>
-
-                  <p>
-                    Logos, visual systems and launch-ready assets for
-                    growing Nigerian businesses.
-                  </p>
-
-                  <strong className={styles.priceLarge}>
-                    From ₦45,000
-                  </strong>
-
-                  <small>
-                    ★ 4.9 · 28 illustrative reviews · Identity verified
-                  </small>
-
-                  <button
-                    className={styles.primary}
-                    onClick={() => navigate('services')}
-                  >
-                    Explore all services
-                  </button>
-                </div>
+              <div className={styles.productGrid}>
+                {products.filter(item => item.kind === 'Services').slice(0, 3).map(item => (
+                  <article className={styles.productCard} key={item.id} onClick={() => openProduct(item)}>
+                    <div className={styles.productImage}><img src={item.image} alt={item.name} /></div>
+                    <div className={styles.productInfo}><h3>{item.name}</h3><p>{item.category}</p><strong>{item.price}</strong></div>
+                  </article>
+                ))}
+                {products.filter(item => item.kind === 'Services').length === 0 && <p>No active service listings are available right now.</p>}
               </div>
+              <button className={styles.primary} onClick={() => navigate('services')}>Explore services</button>
             </section>
 
             <section className={styles.section} id="jobs">
               <div className={styles.sectionHeading}>
-                <h2>Find your next opportunity</h2>
-                <p>
-                  Explore work with clear terms, pay and location.
-                </p>
+                <h2>Current opportunities</h2>
+                <p>Job listings published by employers on KHUB.</p>
               </div>
-
-              <div className={styles.jobGrid}>
-                <JobCard
-                  title="Product designer"
-                  company="Cedar Digital · Lagos"
-                  type="Full-time · Hybrid"
-                  salary="₦450,000–₦650,000 / month"
-                  note="Health cover · Portfolio required"
-                  onClick={() => {
-                    setSelectedJob({
-                      title: 'Product designer',
-                      company: 'Cedar Digital',
-                      reference: 'KH-JB-3107',
-                      salary: '₦450,000–₦650,000 / month',
-                      location: 'Lagos',
-                      arrangement: 'Hybrid',
-                      type: 'Full-time',
-                      closes: '25 Oct 2026',
-                    });
-
-                    navigate('job-detail');
-                  }}
-                />
-
-                <JobCard
-                  title="Operations coordinator"
-                  company="Riverline Commerce · Abuja"
-                  type="Full-time · On-site"
-                  salary="₦250,000–₦350,000 / month"
-                  note="Monday–Friday · 2+ years experience"
-                  onClick={() => {
-                    setSelectedJob({
-                      title: 'Operations coordinator',
-                      company: 'Riverline Commerce',
-                      reference: 'KH-JB-3112',
-                      salary: '₦250,000–₦350,000 / month',
-                      location: 'Abuja',
-                      arrangement: 'On-site',
-                      type: 'Full-time',
-                      closes: '28 Oct 2026',
-                    });
-
-                    navigate('job-detail');
-                  }}
-                />
+              <div className={styles.productGrid}>
+                {products.filter(item => item.kind === 'Jobs').slice(0, 4).map(item => (
+                  <article className={styles.productCard} key={item.id} onClick={() => { setSelectedJob({ title: item.name, company: item.sellerName, reference: item.id, salary: item.price, location: item.location, description: item.description }); navigate('job-detail'); }}>
+                    <div className={styles.productInfo}><h3>{item.name}</h3><p>{item.category}</p><strong>{item.price}</strong></div>
+                  </article>
+                ))}
+                {products.filter(item => item.kind === 'Jobs').length === 0 && <p>No active job listings are available right now.</p>}
               </div>
+              <button className={styles.primary} onClick={() => navigate('job-listings')}>Explore jobs</button>
             </section>
 
             <section className={styles.section} id="city">
@@ -2127,7 +2027,7 @@ function App() {
                     ['Become a Landlord / Property Owner', 'rentals'],
                     ['List Rental Spaces', 'rentals'],
                     ['Become a Driver', 'driver-dashboard'],
-                    ['Become a Dispatch Rider', 'driver-dashboard'],
+                    ['Become a Dispatch Rider', 'agent-dashboard'],
                     ['Become a Logistics Partner', 'support'],
                     ['Subscription Plans', 'subscription'],
                     ['Referral Programme', 'referrals'],
@@ -2167,6 +2067,8 @@ function App() {
                     ['Prohibited Items & Activities', 'legal'],
                     ['Dispute Resolution', 'support'],
                     ['Account Suspension & Appeals', 'support'],
+                    ['Cookie & Local Storage Policy', 'legal'],
+                    ['Sponsored Advertising Policy', 'legal'],
                   ],
                 },
                 {
@@ -2379,100 +2281,6 @@ function App() {
             </div>
           )}
 
-          {modal && (
-            <div
-              className={styles.modalBackdrop}
-              role="presentation"
-              onMouseDown={(e) => {
-                if (e.target === e.currentTarget) {
-                  setModal(null);
-                }
-              }}
-            >
-              <section
-                className={styles.modal}
-                role="dialog"
-                aria-modal="true"
-                aria-labelledby="modal-title"
-              >
-                <button
-                  className={styles.modalClose}
-                  onClick={() => setModal(null)}
-                  aria-label="Close dialog"
-                >
-                  <X size={19} />
-                </button>
-
-                {submitted ? (
-                  <div className={styles.modalSuccess}>
-                    <CheckCircle2 size={34} />
-
-                    <h2>Thanks — you’re on your way.</h2>
-
-                    <p>
-                      This demo has recorded your interaction locally. No
-                      information was sent to a server.
-                    </p>
-
-                    <button
-                      className={styles.primary}
-                      onClick={() => setModal(null)}
-                    >
-                      Done
-                    </button>
-                  </div>
-                ) : (
-                  <>
-                    <span className={styles.tag}>
-                      KHUB · Local marketplace
-                    </span>
-
-                    <h2 id="modal-title">{modal.title}</h2>
-
-                    <p>{modal.description}</p>
-
-                    <form onSubmit={onSubmit}>
-                      <label>
-                        Your name
-                        <input
-                          required
-                          placeholder="Enter your name"
-                        />
-                      </label>
-
-                      <label>
-                        Email or phone
-                        <input
-                          required
-                          placeholder="you@example.com or phone number"
-                        />
-                      </label>
-
-                      <label>
-                        More details
-                        <textarea
-                          placeholder="Share a few details (optional)"
-                          rows="3"
-                        />
-                      </label>
-
-                      <button
-                        className={styles.primary}
-                        type="submit"
-                      >
-                        {modal.action} <ArrowRight size={15} />
-                      </button>
-
-                      <small>
-                        Demo interface only. Submitting will not send your
-                        details anywhere.
-                      </small>
-                    </form>
-                  </>
-                )}
-              </section>
-            </div>
-          )}
         </>
       )}
     </div>

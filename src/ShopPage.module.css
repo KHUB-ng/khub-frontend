@@ -225,3 +225,5 @@
   .links button { font-size: 12px; }
 }
 .cardBody h2 button{border:0;background:transparent;padding:0;text-align:left;color:inherit;font:inherit;font-weight:inherit;cursor:pointer}.photo img{cursor:pointer}
+
+.photoPlaceholder{display:grid;place-items:center;width:100%;min-height:180px;border:0;background:#eeece5;color:#718078;font-weight:650;letter-spacing:.08em}

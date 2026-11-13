@@ -1,94 +1,101 @@
-import React, { useMemo, useState } from 'react';
-import { ArrowLeft, CarFront, Package, CalendarClock, MapPin, Wallet, CheckCircle2 } from 'lucide-react';
+import React, { useState } from 'react';
+import { ArrowLeft, MapPin, Wallet, Navigation, CheckCircle2 } from 'lucide-react';
 import styles from './RideBookingPage.module.css';
+import { api } from './lib/api.js';
+import LiveMap from './LiveMap.jsx';
 
-const rideOptions = [
-  { id: 'Economy', price: 5200, seats: '4 seats', pickup: 'Pickup in 4 min', vehicle: 'Toyota Corolla', detail: 'Everyday trips' },
-  { id: 'Comfort', price: 7800, seats: '4 seats', pickup: 'Pickup in 6 min', vehicle: 'Extra legroom', detail: 'More room to relax' },
-  { id: 'XL', price: 10500, seats: '6 seats', pickup: 'Pickup in 8 min', vehicle: 'Larger vehicle', detail: 'For groups and luggage' },
-];
-const money = value => '₦' + Number(value).toLocaleString('en-NG');
+export default function RideBookingPage({user={},onNavigate=()=>{},onBack=()=>{},onRideCreated=()=>{}}) {
+  const [mode,setMode]=useState('Ride');
+  const [pickup,setPickup]=useState({label:'',lat:'',lng:''});
+  const [destination,setDestination]=useState({label:'',lat:'',lng:''});
+  const [sizeClass,setSizeClass]=useState('small');
+  const [wallet,setWallet]=useState(null);
+  const [estimate,setEstimate]=useState(null);
+  const [result,setResult]=useState(null);
+  const [loadingLocation,setLoadingLocation]=useState(false);
+  const [estimating,setEstimating]=useState(false);
+  const [requesting,setRequesting]=useState(false);
+  const [error,setError]=useState('');
+  const [notice,setNotice]=useState('');
 
-export default function RideBookingPage({ user = {}, onNavigate = () => {}, onBack = () => {} }) {
-  const [mode, setMode] = useState('Ride');
-  const [pickup, setPickup] = useState('12 Admiralty Way, Lekki Phase 1');
-  const [destination, setDestination] = useState('18 Ozumba Mbadiwe Ave, Victoria Island');
-  const [when, setWhen] = useState('Now');
-  const [passengers, setPassengers] = useState('1 passenger');
-  const [pickupNote, setPickupNote] = useState('Flat 3B · Meet at the gate');
-  const [ride, setRide] = useState('Economy');
-  const [payment, setPayment] = useState('KHUB wallet · Available ₦86,500');
-  const [notice, setNotice] = useState('');
-  const [requested, setRequested] = useState(false);
-  const [parcel, setParcel] = useState({ item: 'Small parcel', recipient: '', phone: '' });
-  const selected = rideOptions.find(item => item.id === ride) || rideOptions[0];
-  const estimate = useMemo(() => selected.price, [selected]);
-  const request = () => {
-    if (!pickup.trim() || !destination.trim()) { setNotice('Add both pickup and destination before requesting.'); return; }
-    if (mode === 'Ride') {
-      setRequested(true);
-      setNotice(`${ride} request prepared · ${money(estimate)} estimated. No payment has been taken in this demo.`);
-    } else if (mode === 'Scheduled') {
-      setNotice('Your scheduled ride details are saved in this demo. Choose a time before confirming a live booking.');
-    } else {
-      setNotice('Parcel request prepared. Add recipient details and confirm pickup to continue.');
-    }
+  const requestBody=()=>mode==='Ride'?{
+    pickup:{lat:Number(pickup.lat),lng:Number(pickup.lng),label:pickup.label.trim()},
+    dest:{lat:Number(destination.lat),lng:Number(destination.lng),label:destination.label.trim()},
+  }:{
+    pickup:{lat:Number(pickup.lat),lng:Number(pickup.lng),label:pickup.label.trim()},
+    dropoff:{lat:Number(destination.lat),lng:Number(destination.lng),label:destination.label.trim()},
+    size_class:sizeClass,
   };
-  const confirm = () => onNavigate('ride-tracking');
+  const valid=point=>point.label.trim()&&point.lat!==''&&point.lng!==''&&Number.isFinite(Number(point.lat))&&Number.isFinite(Number(point.lng))&&Number(point.lat)>=-90&&Number(point.lat)<=90&&Number(point.lng)>=-180&&Number(point.lng)<=180;
 
+  const useCurrentLocation=()=>{
+    setError('');setNotice('');
+    if(!navigator.geolocation){setError('Geolocation is not supported by this browser.');return;}
+    setLoadingLocation(true);
+    navigator.geolocation.getCurrentPosition(position=>{
+      setPickup({label:'Current location',lat:String(position.coords.latitude),lng:String(position.coords.longitude)});
+      setLoadingLocation(false);
+    },err=>{setError(err?.message||'Location permission was not granted.');setLoadingLocation(false);},{enableHighAccuracy:true,timeout:15000,maximumAge:0});
+  };
+
+  const getEstimate=async()=>{
+    if(!valid(pickup)||!valid(destination)){setError('Enter a pickup and destination label with valid latitude and longitude coordinates.');return;}
+    setEstimating(true);setError('');setNotice('');setResult(null);
+    try{
+      const body=requestBody();
+      const path=mode==='Ride'?'/rides/estimate':'/deliveries/estimate';
+      const quote=await api.post(path,body);
+      setEstimate(quote);
+      const summary=await api.get('/wallet/');
+      setWallet(summary);
+    }catch(err){setError(err?.message||'A live fare estimate could not be calculated.');setEstimate(null);}
+    finally{setEstimating(false);}
+  };
+
+  const placeRequest=async()=>{
+    if(!estimate){setError('Calculate a live backend estimate before requesting.');return;}
+    setRequesting(true);setError('');setNotice('');
+    try{
+      const response=await api.post(mode==='Ride'?'/rides':'/deliveries',requestBody());
+      setResult(response);
+      onRideCreated(response);
+      setNotice('Your request was accepted by KHUB. The fare has been debited from your wallet into escrow.');
+    }catch(err){
+      setError(err?.message||'Your request could not be created.');
+      if(/insufficient funds/i.test(err?.message||''))setNotice('Fund your KHUB wallet through Flutterwave, then return and request again.');
+    }finally{setRequesting(false);}
+  };
+
+  const changePoint=(setter,key,value)=>setter(current=>({...current,[key]:value}));
   return <main className={styles.page}>
-    <div style={{ marginBottom: 18 }}><button type="button" onClick={onBack} aria-label="Go back to the previous page" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, border: '1px solid #dce8df', background: '#fff', color: '#176b43', borderRadius: 999, padding: '10px 16px', fontWeight: 700, cursor: 'pointer', boxShadow: '0 2px 8px rgba(20,60,35,.06)' }}><span aria-hidden="true">←</span> Back</button></div>
-    <header className={styles.heading}>
-      <h1>Your city. A little closer.</h1>
-      <p>06 Rides and logistics / Ride booking</p>
-      <p>Book across Lagos with an upfront fare estimate. All times are WAT.</p>
-    </header>
-    <nav className={styles.tabs} aria-label="Ride and delivery type">
-      {['Ride', 'Send a parcel', 'Scheduled'].map(item => <button key={item} className={mode === item ? styles.activeTab : ''} onClick={() => { setMode(item); setRequested(false); setNotice(''); }}>{item}</button>)}
-    </nav>
+    <div style={{marginBottom:18}}><button type="button" onClick={onBack} aria-label="Go back" style={{display:'inline-flex',alignItems:'center',gap:8,border:'1px solid #dce8df',background:'#fff',color:'#176b43',borderRadius:999,padding:'10px 16px',fontWeight:700,cursor:'pointer'}}><ArrowLeft size={14}/> Back</button></div>
+    <header className={styles.heading}><h1>Your city. A little closer.</h1><p>06 Rides and logistics / Live ride and delivery requests</p><p>Fares are calculated by the KHUB backend from pickup and destination coordinates.</p></header>
+    <nav className={styles.tabs} aria-label="Ride or delivery type">{['Ride','Send a parcel'].map(item=><button key={item} className={mode===item?styles.activeTab:''} onClick={()=>{setMode(item);setEstimate(null);setResult(null);setError('');}}>{item}</button>)}</nav>
     <div className={styles.layout}>
       <div className={styles.leftColumn}>
-        <section className={styles.card + ' ' + styles.destinationCard}>
-          <h2>{mode === 'Send a parcel' ? 'Where is it going?' : 'Where are we going?'}</h2>
-          <label className={styles.field}><span><MapPin size={13}/> Pickup</span><input value={pickup} onChange={e => setPickup(e.target.value)} aria-label="Pickup address" /></label>
-          <label className={styles.field}><span><MapPin size={13}/> {mode === 'Send a parcel' ? 'Drop-off' : 'Destination'}</span><input value={destination} onChange={e => setDestination(e.target.value)} aria-label="Destination address" /></label>
-          {mode === 'Send a parcel' ? <>
-            <label className={styles.field}><span>Parcel size</span><select value={parcel.item} onChange={e => setParcel(p => ({ ...p, item: e.target.value }))}><option>Small parcel</option><option>Medium parcel</option><option>Large parcel</option></select></label>
-            <div className={styles.twoFields}><label className={styles.field}><span>Recipient name</span><input value={parcel.recipient} onChange={e => setParcel(p => ({ ...p, recipient: e.target.value }))} placeholder="Full name" /></label><label className={styles.field}><span>Recipient phone</span><input value={parcel.phone} onChange={e => setParcel(p => ({ ...p, phone: e.target.value }))} placeholder="+234…" /></label></div>
-          </> : <div className={styles.twoFields}>
-            <label className={styles.field}><span>When</span><select value={when} onChange={e => setWhen(e.target.value)}><option>Now</option><option>In 30 minutes</option><option>In 1 hour</option><option>Choose time</option></select></label>
-            <label className={styles.field}><span>Passengers</span><select value={passengers} onChange={e => setPassengers(e.target.value)}><option>1 passenger</option><option>2 passengers</option><option>3 passengers</option><option>4 passengers</option><option>5 passengers</option><option>6 passengers</option></select></label>
-          </div>}
-          <label className={styles.noteField}><span>Pickup note</span><input value={pickupNote} onChange={e => setPickupNote(e.target.value)} /></label>
-        </section>
-        <section className={styles.card + ' ' + styles.rideCard}>
-          <h2>{mode === 'Send a parcel' ? 'Choose delivery speed' : 'Choose your ride'}</h2>
-          {mode === 'Send a parcel' ? <>
-            <label className={styles.rideOption}><input type="radio" checked={ride === 'Economy'} onChange={() => setRide('Economy')} /><span><strong>Standard delivery · ₦3,000</strong><small>Pickup in 30–45 min · Trackable delivery</small><small>✓ Available</small></span></label>
-            <label className={styles.rideOption}><input type="radio" checked={ride === 'Comfort'} onChange={() => setRide('Comfort')} /><span><strong>Express delivery · ₦4,500</strong><small>Pickup in 15–25 min · Priority handling</small><small>✓ Available</small></span></label>
-          </> : rideOptions.map(option => <label className={styles.rideOption} key={option.id}><input type="radio" name="ride" checked={ride === option.id} onChange={() => setRide(option.id)} /><span><strong>{option.id} · {money(option.price)}</strong><small>{option.seats} · {option.pickup} · {option.vehicle}</small><small>✓ Available</small></span></label>)}
+        <section className={styles.card+' '+styles.destinationCard}><h2>{mode==='Ride'?'Where are we going?':'Where is your parcel going?'}</h2>
+          <div className={styles.field}><span><MapPin size={13}/> Pickup label</span><input value={pickup.label} onChange={e=>changePoint(setPickup,'label',e.target.value)} placeholder="Pickup address or landmark"/></div>
+          <div className={styles.twoFields}><label className={styles.field}><span>Pickup latitude</span><input type="number" min="-90" max="90" step="any" value={pickup.lat} onChange={e=>changePoint(setPickup,'lat',e.target.value)} placeholder="6.45"/></label><label className={styles.field}><span>Pickup longitude</span><input type="number" min="-180" max="180" step="any" value={pickup.lng} onChange={e=>changePoint(setPickup,'lng',e.target.value)} placeholder="3.39"/></label></div>
+          <button className={styles.link} onClick={useCurrentLocation} disabled={loadingLocation}><Navigation size={14}/>{loadingLocation?'Getting location…':'Use my current location for pickup'}</button>
+          <div className={styles.field}><span><MapPin size={13}/> {mode==='Ride'?'Destination label':'Drop-off label'}</span><input value={destination.label} onChange={e=>changePoint(setDestination,'label',e.target.value)} placeholder="Destination address or landmark"/></div>
+          <div className={styles.twoFields}><label className={styles.field}><span>Destination latitude</span><input type="number" min="-90" max="90" step="any" value={destination.lat} onChange={e=>changePoint(setDestination,'lat',e.target.value)} placeholder="6.43"/></label><label className={styles.field}><span>Destination longitude</span><input type="number" min="-180" max="180" step="any" value={destination.lng} onChange={e=>changePoint(setDestination,'lng',e.target.value)} placeholder="3.42"/></label></div>
+          {mode==='Send a parcel'&&<label className={styles.field}><span>Parcel size</span><select value={sizeClass} onChange={e=>{setSizeClass(e.target.value);setEstimate(null);}}><option value="small">Small</option><option value="medium">Medium</option><option value="large">Large</option></select></label>}
+          <p className={styles.caption}>KHUB currently requires coordinates. Address search and interactive map selection need a configured geocoding/map provider; no route or driver availability is invented here.</p>
+          <button className={styles.primary} onClick={getEstimate} disabled={estimating}>{estimating?'Calculating…':'Calculate live estimate'}</button>
         </section>
       </div>
       <div className={styles.rightColumn}>
-        <section className={styles.mapCard} aria-label="Illustrative route map">
-          <div className={styles.mapTop}><strong>Lekki · Admiralty Way</strong><span>8.2 km · 24 min</span></div>
-          <svg className={styles.route} viewBox="0 0 700 330" preserveAspectRatio="none" role="img" aria-label="Illustrative route from Lekki to Victoria Island"><path d="M35 54 V116 H240 V174 H470 V228" fill="none" stroke="#123f32" strokeWidth="5" strokeLinejoin="miter"/><circle cx="35" cy="54" r="7" fill="#123f32" stroke="#fff" strokeWidth="3"/><circle cx="470" cy="228" r="7" fill="#123f32" stroke="#fff" strokeWidth="3"/></svg>
-          <strong className={styles.mapDestination}>Victoria Island · Ozumba</strong>
+        <section className={styles.card}><h2>Route map</h2><LiveMap label="Pickup and destination route map" origin={valid(pickup)&&valid(destination)?{lat:pickup.lat,lng:pickup.lng}:undefined} destination={valid(pickup)&&valid(destination)?{lat:destination.lat,lng:destination.lng}:undefined} latitude={valid(pickup)?pickup.lat:undefined} longitude={valid(pickup)?pickup.lng:undefined} query={!valid(pickup)?pickup.label:undefined}/><p className={styles.caption}>Map preview follows the pickup and destination entered above. Device GPS is requested only when you select “Use my current location”.</p></section>
+        <section className={styles.card+' '+styles.fareCard}><h2>{mode==='Ride'?'Ride fare estimate':'Delivery fee estimate'}</h2>
+          {!estimate&&<p>Enter both locations and calculate an estimate to see the server price.</p>}
+          {estimate&&<><h3>{mode==='Ride'?estimate.fare_display:estimate.fee_display}</h3><p>Distance · {(Number(estimate.distance_m||0)/1000).toFixed(2)} km</p><p>Platform commission · ₦{(Number(estimate.commission_kobo||0)/100).toLocaleString('en-NG',{maximumFractionDigits:2})}</p><p>{mode==='Ride'?'Driver':'Delivery agent'} net · ₦{(Number(mode==='Ride'?estimate.driver_net_kobo:estimate.agent_net_kobo||0)/100).toLocaleString('en-NG',{maximumFractionDigits:2})}</p><p>Available wallet balance · {wallet?.balance_display||'Refresh required'}</p></>}
+          {!result?<button className={styles.primary} disabled={!estimate||requesting} onClick={placeRequest}>{requesting?'Submitting…':mode==='Ride'?'Request ride and pay from wallet':'Request delivery and pay from wallet'}</button>:<div className={styles.confirmBox}><p><CheckCircle2 size={16}/> Request accepted</p><p>Reference · {result.pid}</p><p>Status · {result.status}</p><button className={styles.primary} onClick={()=>onNavigate(mode==='Ride'?'ride-tracking':'orders-bookings')}>View request status</button></div>}
+          <button className={styles.link} onClick={()=>onNavigate('wallet')}><Wallet size={14}/> Fund wallet with Flutterwave</button>
         </section>
-        <p className={styles.caption}>Illustrative route, not a live map · Lagos</p>
-        <section className={styles.card + ' ' + styles.fareCard}>
-          <h2>{mode === 'Send a parcel' ? 'Delivery estimate' : 'Fare estimate'}</h2>
-          <div className={styles.fareLine}><span>Base + distance/time · {money(mode === 'Send a parcel' ? (ride === 'Comfort' ? 4000 : 2500) : estimate - 500)}</span><span>{mode === 'Send a parcel' ? 'Delivery fee · ₦500' : 'Booking fee · ₦500'}</span></div>
-          <h3>{mode === 'Send a parcel' ? `Estimated total · ${ride === 'Comfort' ? '₦4,500' : '₦3,000'}` : `${ride} total · ${money(estimate)}`}</h3>
-          <p>8.2 km · About 24 min. Estimate includes applicable taxes; changed destination, waiting time after 3 min or tolls may change final fare. Review any change before accepting.</p>
-          <label className={styles.field + ' ' + styles.paymentField}><span><Wallet size={13}/> Payment method</span><select value={payment} onChange={e => setPayment(e.target.value)}><option>KHUB wallet · Available ₦86,500</option><option>Card · Visa ending 2041</option><option>Cash to driver</option></select></label>
-          {!requested ? <button className={styles.primary + ' ' + styles.full} onClick={request}>{mode === 'Send a parcel' ? 'Request delivery · ₦3,000' : mode === 'Scheduled' ? `Schedule ${ride} · ${money(estimate)}` : `Request ${ride} · ${money(estimate)}`}</button> : <div className={styles.confirmBox}><p><CheckCircle2 size={16}/> Request details ready</p><span>{ride} · {money(estimate)} estimate · {payment}</span><button className={styles.primary + ' ' + styles.full} onClick={confirm}>Confirm and view trip</button></div>}
-        </section>
-        <section className={styles.tip}><p>State example · Ride unavailable<br/>No Economy drivers near your pickup right now. You have not been charged. Keep your route and try Comfort or retry shortly.</p><button className={styles.link} onClick={() => { setRide('Comfort'); setRequested(false); setNotice('Comfort selected. Review the updated fare before requesting.'); }}>Try again</button></section>
-        <p className={styles.footerNote}>Share trip and safety support are available once a driver is assigned. Always check the plate and driver before boarding.</p>
+        <section className={styles.tip}><strong>How payment works</strong><p>The backend recalculates the fare and debits the KHUB wallet into escrow when you request. Drivers and agents receive their net amount only after the backend completion workflow releases escrow.</p></section>
       </div>
     </div>
-    {notice && <div className={styles.notice} role="status"><span>{notice}</span><button onClick={() => setNotice('')} aria-label="Dismiss notice">×</button></div>}
+    {error&&<div className={styles.notice} role="alert">{error}</div>}{notice&&<div className={styles.notice} role="status">{notice}</div>}
     <button className={styles.back} onClick={onBack}><ArrowLeft size={14}/> Back to dashboard</button>
   </main>;
 }

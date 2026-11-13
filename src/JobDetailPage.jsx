@@ -1,77 +1,45 @@
-import React, { useState } from 'react';
-import { Heart, Check, ShieldCheck, ArrowLeft, Flag } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { Heart, ArrowLeft, ArrowUpRight } from 'lucide-react';
 import styles from './JobDetailPage.module.css';
+import { listingsApi } from './lib/listings.js';
 
-export default function JobDetailPage({ job, onApply, onBack }) {
+const mapJob = row => {
+  const attrs = row.attributes || {};
+  const min = attrs.salary_min_kobo != null ? Number(attrs.salary_min_kobo)/100 : Number(attrs.salary_min || 0);
+  const max = attrs.salary_max_kobo != null ? Number(attrs.salary_max_kobo)/100 : Number(attrs.salary_max || 0);
+  return { id:row.pid, pid:row.pid, title:row.title, company:attrs.company_name||attrs.company||'Employer on KHUB', location:row.location||'Location not specified', arrangement:attrs.work_mode||attrs.arrangement||'Not specified', salary:attrs.salary_display||(min||max?'₦'+min.toLocaleString('en-NG')+'–₦'+max.toLocaleString('en-NG'):'Salary not specified'), type:attrs.employment_type||attrs.type||'Not specified', level:attrs.experience_level||attrs.experience||'Not specified', closes:attrs.application_deadline||'Not specified', posted:row.created_at||'', category:row.category||'Other', description:row.description||'', };
+};
+
+export default function JobDetailPage({ job, onApply, onBack, onOpenJob }) {
   const [saved, setSaved] = useState(false);
-  const [reported, setReported] = useState(false);
-  const current = job || { title: 'Product designer', company: 'Cedar Digital', reference: 'KH-JB-3107', salary: '₦450,000–₦650,000 / month', location: 'Lagos', arrangement: 'Hybrid', type: 'Full-time', closes: '25 Oct 2026' };
-  const productRole = current.title === 'Product designer';
+  const [related, setRelated] = useState([]);
+  const [relatedLoading, setRelatedLoading] = useState(false);
+  useEffect(() => {
+    if (!job?.pid) return undefined;
+    let active = true; setRelatedLoading(true);
+    listingsApi.browse({ vertical:'job', category:job.category, page:1, page_size:12 })
+      .then(payload => { if(active){ const rows=Array.isArray(payload)?payload:(payload?.items||[]); setRelated(rows.map(mapJob).filter(row=>row.pid!==job.pid).slice(0,6)); } })
+      .catch(()=>{ if(active)setRelated([]); })
+      .finally(()=>{ if(active)setRelatedLoading(false); });
+    return()=>{active=false;};
+  },[job?.pid,job?.category]);
+  if (!job) return <main className={styles.page}><div className={styles.wrap}><button className={styles.back} onClick={onBack}><ArrowLeft size={15}/> Back to jobs</button><p>Select a job listing to view its details.</p></div></main>;
   return <main className={styles.page}>
     <div className={styles.wrap}>
       <button className={styles.back} onClick={onBack}><ArrowLeft size={15}/> Back to jobs</button>
-      <header className={styles.header}>
-        <h1>{current.title}</h1>
-        <p>05 Jobs / Job detail</p>
-        <p>{current.company} · {current.location || 'Lagos'}, Nigeria · Job {current.reference}</p>
-      </header>
+      <header className={styles.header}><h1>{job.title}</h1><p>05 Jobs / Job detail</p><p>{job.company} · {job.location} · {job.category||'Job opportunity'}</p></header>
       <div className={styles.layout}>
         <div className={styles.mainCol}>
-          <section className={styles.card}>
-            <h2>{productRole ? 'Design everyday progress' : 'Make a meaningful difference'}</h2>
-            <p className={styles.verified}><Check size={14}/> Employer verified</p>
-            <h3 className={styles.salary}>{current.salary}</h3>
-            <p>{current.type || 'Full-time'} · {current.arrangement || 'Hybrid'}{productRole ? ' (3 days in office) · Mid-level · 3+ years' : ' · Experienced role'}</p>
-            <p>Posted 10 Oct 2026 · Applications close {current.closes || '25 Oct 2026'}</p>
-            <p>{productRole ? 'We build digital tools for Nigerian small businesses. Join a multidisciplinary team making payments, inventory and customer experiences simpler for local merchants.' : `Join ${current.company} and help the team deliver thoughtful, reliable work. Bring your experience, collaborate across teams and make a measurable impact.`}</p>
-          </section>
-          <section className={styles.card}>
-            <h2>What you’ll work on</h2>
-            {productRole ? <>
-              <p><strong>Own product discovery</strong><br/>Turn research with merchants into clear user journeys and testable prototypes.</p>
-              <p><strong>Craft accessible interfaces</strong><br/>Partner with engineers to ship responsive, accessible flows and a consistent design system.</p>
-              <p><strong>Measure and improve</strong><br/>Use usability testing and product data to iterate beyond the first release.</p>
-            </> : <>
-              <p><strong>Deliver excellent work</strong><br/>Own priorities, communicate progress and deliver quality outcomes on schedule.</p>
-              <p><strong>Work collaboratively</strong><br/>Partner with colleagues and stakeholders to solve practical customer problems.</p>
-              <p><strong>Keep improving</strong><br/>Use feedback and evidence to improve processes and results.</p>
-            </>}
-          </section>
-          <section className={styles.card}>
-            <h2>What you’ll bring</h2>
-            { (productRole ? ['3+ years designing shipped web or mobile products.', 'A portfolio showing your process, trade-offs and outcomes.', 'Strong Figma skills, responsive layout and accessibility knowledge.', 'Clear collaboration and communication; fintech experience is a plus.'] : ['Relevant experience and a record of delivering good work.', 'Clear communication, organisation and problem-solving skills.', 'Ability to collaborate and manage priorities independently.', 'A thoughtful, reliable approach to learning and improvement.']).map(item => <p className={styles.bullet} key={item}>• {item}</p>)}
-            <p>Equivalent practical experience is welcome. You do not need to meet every nice-to-have.</p>
-          </section>
+          <section className={styles.card}><h2>Role overview</h2><h3 className={styles.salary}>{job.salary||'Salary not specified'}</h3><p>{job.type||'Employment type not specified'} · {job.arrangement||'Work arrangement not specified'} · {job.level||'Experience level not specified'}</p><p>Posted {job.posted?new Date(job.posted).toLocaleDateString('en-NG'):'date not supplied'} · Application deadline {job.closes||'not supplied'}</p><p>{job.description||'The employer has not supplied a full role description. Contact the employer through KHUB for further details before applying.'}</p></section>
+          <section className={styles.card}><h2>Listing information</h2><p><strong>Employer:</strong> {job.company}</p><p><strong>Category:</strong> {job.category||'Not specified'}</p><p><strong>Location:</strong> {job.location||'Not specified'}</p><p><strong>Work arrangement:</strong> {job.arrangement||'Not specified'}</p><p><strong>Employment type:</strong> {job.type||'Not specified'}</p><p><strong>Experience:</strong> {job.level||'Not specified'}</p><p><strong>Reference:</strong> {job.reference||job.pid||job.id}</p></section>
+          <section className={styles.safetyCard}><h3>Application safety</h3><p>Never pay an unofficial recruitment fee or share passwords, OTPs or bank PINs. Report suspicious requests to KHUB support.</p><a className={styles.textButton} href={`mailto:support@khub.com.ng?subject=${encodeURIComponent('Report job listing '+(job.pid||job.id))}`}>Report this job to KHUB</a></section>
         </div>
         <aside className={styles.sideCol}>
-          <section className={`${styles.card} ${styles.applyCard}`}>
-            <h2>Ready for your next chapter?</h2>
-            <button className={styles.primary} onClick={onApply}>Apply for this job</button>
-            <button className={styles.textButton} onClick={() => setSaved(v => !v)}><Heart size={14} fill={saved ? 'currentColor' : 'none'}/> {saved ? 'Saved job' : 'Save job'}</button>
-            {saved && <p className={styles.feedback}>This job is saved in this session.</p>}
-            <p>CV (PDF / DOCX up to 5 MB) and portfolio link required. No application fee.</p>
-          </section>
-          <section className={styles.card}>
-            <h2>About {current.company}</h2>
-            <h3>{current.company === 'Cedar Digital' ? 'CD / Cedar Digital' : current.company}</h3>
-            <p>{current.company === 'Cedar Digital' ? 'Lagos-based product company · 45–60 people · Established 2018' : 'A Nigerian employer committed to clear role expectations and a respectful recruitment process.'}</p>
-            <p>18 Ozumba Mbadiwe Avenue, Victoria Island, Lagos</p>
-            <p>Health cover, paid leave, learning budget and equipment support. Salary offer depends on experience within the advertised range.</p>
-          </section>
-          <section className={styles.card}>
-            <h2>Hiring process</h2>
-            <p>1 · Application review<br/>CV and portfolio reviewed within 7 business days.</p>
-            <p>2 · Portfolio conversation<br/>60-minute remote interview; discuss work you already created.</p>
-            <p>3 · Team conversation / offer<br/>No unpaid production assignment. Terms supplied in writing.</p>
-          </section>
-          <section className={styles.safetyCard}>
-            <h3>Stay safe</h3>
-            <p>Verified employer identity is not a guarantee of a job offer. Report requests for payment, OTPs or sensitive bank information.</p>
-            <button className={styles.textButton} onClick={() => setReported(true)}><Flag size={14}/> {reported ? 'Job report noted' : 'Report this job'}</button>
-            {reported && <p className={styles.feedback}>Thanks. This demo has noted your report locally.</p>}
-          </section>
+          <section className={`${styles.card} ${styles.applyCard}`}><h2>Interested in this role?</h2><button className={styles.primary} onClick={onApply}>Apply for this job</button><button className={styles.textButton} onClick={()=>setSaved(v=>!v)}><Heart size={14} fill={saved?'currentColor':'none'}/> {saved?'Saved job':'Save job'}</button>{saved&&<p className={styles.feedback}>Saved in this browsing session.</p>}<p>Review the role details and application requirements before submitting.</p></section>
+          <section className={styles.card}><h2>About the employer</h2><p>{job.company}</p><p>Employer information and verification details should be reviewed on the listing and through KHUB before accepting an offer.</p></section>
         </aside>
       </div>
+      <section className={styles.card} style={{marginTop:32}}><h2>Related opportunities</h2><p>Other current listings in {job.category||'the jobs marketplace'}.</p>{relatedLoading&&<p>Loading related jobs…</p>}<div className={styles.relatedGrid}>{related.map(item=><button type="button" className={styles.relatedCard} key={item.pid} onClick={()=>onOpenJob?.(item)}><strong>{item.title}</strong><span>{item.company} · {item.location}</span><span>{item.salary}</span><span>View details <ArrowUpRight size={13}/></span></button>)}</div>{!relatedLoading&&related.length===0&&<p>No related live listings are available at the moment.</p>}</section>
     </div>
   </main>;
 }

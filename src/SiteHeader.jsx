@@ -17,6 +17,7 @@ export default function SiteHeader({
   page = 'home',
   onNavigate,
   onList,
+  user = null,
 }) {
   const [mobileOpen, setMobileOpen] = useState(false);
 
@@ -68,14 +69,32 @@ export default function SiteHeader({
           ))}
         </nav>
 
-        {page !== 'shop' && (
+        {user ? (
+          <button
+            className={styles.signupButton}
+            onClick={() => {
+              const routes = {
+                buyer: 'dashboard',
+                seller: 'seller-dashboard',
+                driver: 'driver-dashboard',
+                logistics_agent: 'agent-dashboard',
+                service_provider: 'provider-dashboard',
+                jobposter: 'job-poster-dashboard',
+                admin: 'admin-dashboard',
+              };
+              navigate(routes[String(user.role_code || user.role || '').toLowerCase()] || 'dashboard');
+            }}
+          >
+            {String(user.role_code || user.role || '').toLowerCase() === 'admin' ? 'Admin dashboard' : 'My dashboard'}
+          </button>
+        ) : page !== 'shop' ? (
           <button
             className={styles.signupButton}
             onClick={() => navigate('account')}
           >
             Sign up
           </button>
-        )}
+        ) : null}
 
         <button
           className={styles.listButton}
