@@ -223,7 +223,7 @@ function App() {
             .toLowerCase()
             .includes(search.toLowerCase())
       ),
-    [activeCategory, search]
+    [activeCategory, search, products]
   );
 
   const notify = (message) => {
@@ -537,6 +537,7 @@ function App() {
           onHome={() => navigate('home')}
           onRent={() => navigate('rentals')}
           onNavigate={navigate}
+          onAddToCart={addProductToCart}
         />
       </>
     );
