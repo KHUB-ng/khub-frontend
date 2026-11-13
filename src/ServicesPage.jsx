@@ -30,7 +30,7 @@ export default function ServicesPage({ onHome, onNavigate }) {
     return () => { active = false; };
   }, [search, activeCategory, location]);
 
-  const categories = ['All services', ...new Set(providers.map(item => item.category).filter(Boolean))];
+  const categories = ['All services', 'Cleaning & Home Care', 'Repairs & Maintenance', 'Plumbing & Electrical', 'Beauty & Wellness', 'Photography & Video', 'Graphic Design & Branding', 'Web & Software Development', 'Digital Marketing', 'Education & Tutoring', 'Events & Catering', 'Transport & Logistics', 'Professional & Business Services', 'Fashion & Tailoring', 'Health & Fitness', 'Moving & Installation'];
   return <main className={styles.page}>
     <section className={styles.intro}>
       <h1>Good people. Great work.</h1>
