@@ -1264,6 +1264,11 @@ function App() {
               arrangement: job.arrangement,
               type: job.type,
               closes: job.closes,
+              pid: job.pid || job.id,
+              category: job.category,
+              description: job.description,
+              posted: job.posted,
+              level: job.level,
             });
 
             navigate('job-detail');
@@ -1274,6 +1279,7 @@ function App() {
           job={selectedJob}
           onBack={() => navigate('jobs')}
           onApply={() => navigate('job-application')}
+          onOpenJob={nextJob => setSelectedJob(nextJob)}
         />
       ) : page === 'job-application' ? (
         <JobApplicationPage
