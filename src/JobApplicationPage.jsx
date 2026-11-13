@@ -1,110 +1,52 @@
 import React, { useState } from 'react';
 import styles from './JobApplicationPage.module.css';
+import { api } from './lib/api.js';
 
-const defaultJob = {
-  title: 'Product designer', company: 'Cedar Digital', reference: 'KH-JB-3107',
-  salary: '₦450,000–₦650,000 / month', location: 'Lagos', arrangement: 'Hybrid',
-  type: 'Full-time', closes: '25 Oct 2026',
-};
+export default function JobApplicationPage({ user, job, onBack=()=>{}, onNavigate=()=>{} }) {
+  const [cv,setCv]=useState(null);
+  const [coverNote,setCoverNote]=useState('');
+  const [consent,setConsent]=useState(false);
+  const [submitting,setSubmitting]=useState(false);
+  const [application,setApplication]=useState(null);
+  const [error,setError]=useState('');
+  const selectedJob=job||null;
 
-export default function JobApplicationPage({ user, job, onBack, onNavigate }) {
-  const selectedJob = job || defaultJob;
-  const [form, setForm] = useState({
-    fullName: user?.name || 'Tomi Adeyemi',
-    email: user?.email || 'tomi.adeyemi@example.com',
-    phone: user?.phone || '+234 803 000 1428',
-    location: 'Lekki, Lagos', portfolio: 'tomi-design.example.com',
-    experience: '4 years', notice: '4 weeks',
-    reason: 'I have designed merchant tools used by small businesses in Lagos. I would love to bring my research-led approach to Cedar’s inventory and payments products.',
-  });
-  const [fileName, setFileName] = useState('Tomi-Adeyemi-CV.pdf');
-  const [fileSize, setFileSize] = useState('1.8 MB');
-  const [confirmed, setConfirmed] = useState(true);
-  const [consent, setConsent] = useState(true);
-  const [alerts, setAlerts] = useState(false);
-  const [submitted, setSubmitted] = useState(true); // The screenshot demonstrates the submitted confirmation state.
-  const [draftSaved, setDraftSaved] = useState(false);
-  const [error, setError] = useState('Tomi-CV.pdf (8 MB) exceeds 5 MB. Compress or replace the file. Contact details and cover note stay saved.');
-
-  const update = (key, value) => setForm((current) => ({ ...current, [key]: value }));
-  const handleFile = (event) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-    if (file.size > 5 * 1024 * 1024) {
-      setError(`${file.name} exceeds 5 MB. Compress or replace the file. Contact details and cover note stay saved.`);
-      return;
-    }
-    setFileName(file.name);
-    setFileSize(`${(file.size / (1024 * 1024)).toFixed(1)} MB`);
-    setError('');
-    setSubmitted(false);
+  const handleFile=event=>{
+    const file=event.target.files?.[0];
+    if(!file){setCv(null);return;}
+    if(file.size>5*1024*1024){setError('CV must be 5 MB or smaller.');setCv(null);return;}
+    const allowed=['application/pdf','application/msword','application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
+    if(!allowed.includes(file.type)){setError('Upload a PDF, DOC or DOCX CV.');setCv(null);return;}
+    setError('');setCv(file);
   };
-  const submit = (event) => {
+  const submit=async event=>{
     event.preventDefault();
-    if (!confirmed || !consent) return;
-    setSubmitted(true);
-    setDraftSaved(false);
-    setError('');
+    if(!selectedJob?.pid){setError('The job listing reference is missing. Return to the live job listing and open it again.');return;}
+    if(!consent){setError('Consent is required before submitting your application.');return;}
+    setSubmitting(true);setError('');
+    try{
+      const data=new FormData();
+      if(cv)data.append('cv',cv);
+      data.append('cover_note',coverNote.trim());
+      const result=await api.upload('/listings/'+encodeURIComponent(selectedJob.pid)+'/applications',data);
+      setApplication(result);
+    }catch(err){setError(err?.message||'Your application could not be submitted.');}
+    finally{setSubmitting(false);}
   };
-  const saveDraft = () => {
-    setDraftSaved(true);
-    setSubmitted(false);
-    setError('Your draft is saved in this demo. Your details remain on this device and have not been sent to an employer.');
-  };
+
+  if(application)return <main className={styles.page}><header className={styles.heading}><h1>Application submitted.</h1><p>Your application has been recorded by KHUB.</p></header><section className={styles.card}><h2>{selectedJob?.title}</h2><p>{selectedJob?.company}</p><p>Application reference · {application.pid||application.reference||'Recorded'}</p><p>Status · {application.status||'submitted'}</p><button className={styles.primary} onClick={()=>onNavigate('job-application')}>View application area</button><button className={styles.textButton} onClick={()=>onNavigate('orders-bookings')}>Back to activity</button></section></main>;
 
   return <main className={styles.page}>
-    <div style={{ marginBottom: 18 }}><button type="button" onClick={onBack} aria-label="Go back to the previous page" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, border: '1px solid #dce8df', background: '#fff', color: '#176b43', borderRadius: 999, padding: '10px 16px', fontWeight: 700, cursor: 'pointer', boxShadow: '0 2px 8px rgba(20,60,35,.06)' }}><span aria-hidden="true">←</span> Back</button></div>
-    <header className={styles.heading}>
-      <h1>Put your best work forward.</h1>
-      <p>05 Jobs / Job application<br />{selectedJob.title} · {selectedJob.company} · {selectedJob.reference} · Your information stays private.</p>
-    </header>
+    <div style={{marginBottom:18}}><button type="button" onClick={onBack} aria-label="Go back" style={{display:'inline-flex',alignItems:'center',gap:8,border:'1px solid #dce8df',background:'#fff',color:'#176b43',borderRadius:999,padding:'10px 16px',fontWeight:700,cursor:'pointer'}}>← Back</button></div>
+    <header className={styles.heading}><h1>Put your best work forward.</h1><p>05 Jobs / Job application<br/>{selectedJob?.title||'Select a live job'} · {selectedJob?.company||''}</p></header>
+    {!selectedJob&&<div className={styles.error} role="alert">Open a job from the live job listings before applying.</div>}
     <form className={styles.layout} onSubmit={submit}>
       <div className={styles.left}>
-        <section className={styles.card}>
-          <h2>Your contact details</h2>
-          <div className={styles.fields}>
-            <label>Full name *<input required value={form.fullName} onChange={e=>update('fullName',e.target.value)} /></label>
-            <label className={styles.focused}>Email *<input required type="email" value={form.email} onChange={e=>update('email',e.target.value)} /></label>
-            <label>Phone *<input required value={form.phone} onChange={e=>update('phone',e.target.value)} /></label>
-            <label>Current location *<input required value={form.location} onChange={e=>update('location',e.target.value)} /></label>
-          </div>
-        </section>
-        <section className={styles.card}>
-          <h2>Experience and attachments</h2>
-          <div className={styles.fileBox}><span>CV / résumé *</span><span>✓ {fileName} · {fileSize} · Attached</span></div>
-          <label className={styles.fileLink}>Replace CV<input type="file" accept=".pdf,.doc,.docx" onChange={handleFile} /></label>
-          <p className={styles.helper}>PDF or DOCX · Maximum 5 MB · Shared only with this employer</p>
-          <label className={styles.fullField}>Portfolio URL *<input required value={form.portfolio} onChange={e=>update('portfolio',e.target.value)} /></label>
-          <div className={styles.fields}>
-            <label>Relevant experience *<select value={form.experience} onChange={e=>update('experience',e.target.value)}><option>Less than 1 year</option><option>1 year</option><option>2 years</option><option>3 years</option><option>4 years</option><option>5 years</option><option>6+ years</option></select></label>
-            <label>Notice period<select value={form.notice} onChange={e=>update('notice',e.target.value)}><option>Immediately</option><option>1 week</option><option>2 weeks</option><option>4 weeks</option><option>8 weeks</option></select></label>
-          </div>
-          <label className={styles.fullField}>Why this role?<textarea rows="3" value={form.reason} onChange={e=>update('reason',e.target.value)} /></label>
-        </section>
-        <section className={styles.card}>
-          <h2>Review and consent</h2>
-          <label className={styles.check}><input type="checkbox" checked={confirmed} onChange={e=>setConfirmed(e.target.checked)} required /> I confirm my information is accurate.</label>
-          <label className={styles.check}><input type="checkbox" checked={consent} onChange={e=>setConsent(e.target.checked)} required /> I consent to {selectedJob.company} using this application for this role’s recruitment. KHUB’s privacy terms apply.</label>
-          <label className={styles.check}><input type="checkbox" checked={alerts} onChange={e=>setAlerts(e.target.checked)} /> Send me similar job alerts (optional).</label>
-          <div className={styles.actions}><button className={styles.primary} type="submit">Submit application</button><button className={styles.textButton} type="button" onClick={saveDraft}>Save draft</button></div>
-          {draftSaved && <p className={styles.draftNotice}>Draft saved · Your application has not been submitted.</p>}
-        </section>
+        <section className={styles.card}><h2>Your account</h2><p>{user?.name||'KHUB member'} · {user?.email||'Account email unavailable'}</p><p>Applications are linked to your authenticated KHUB account. Update your profile if these details need correction.</p><button type="button" className={styles.textButton} onClick={()=>onNavigate('settings')}>Update profile</button></section>
+        <section className={styles.card}><h2>CV / résumé</h2><label className={styles.fileLink}>Choose CV<input type="file" accept=".pdf,.doc,.docx" onChange={handleFile}/></label><p className={styles.helper}>{cv?cv.name:'PDF, DOC or DOCX · Maximum 5 MB · Optional'}</p><label className={styles.fullField}>Cover note (optional)<textarea rows="6" value={coverNote} onChange={e=>setCoverNote(e.target.value)} placeholder="Tell the employer why this role interests you and how your experience is relevant."/></label></section>
+        <section className={styles.card}><h2>Consent</h2><label className={styles.check}><input type="checkbox" checked={consent} onChange={e=>setConsent(e.target.checked)}/> I consent to the employer reviewing this application for the selected role under KHUB's privacy terms.</label><button className={styles.primary} type="submit" disabled={submitting||!selectedJob}>{submitting?'Submitting application…':'Submit application'}</button>{error&&<p className={styles.error} role="alert">{error}</p>}</section>
       </div>
-      <aside className={styles.right}>
-        <section className={styles.card}>
-          <h2>You’re applying for</h2><h3>{selectedJob.title}</h3>
-          <p>✓ {selectedJob.company} · Verified</p><p>{selectedJob.salary}</p><p>{selectedJob.location} · {selectedJob.arrangement} · {selectedJob.type}</p><p>Closes {selectedJob.closes} · No application fee</p>
-        </section>
-        {error && <section className={styles.alert}><p>State example · {error.includes('exceeds') ? 'Upload validation' : draftSaved ? 'Draft saved' : 'Application status'}</p><p>{error}</p>{error.includes('exceeds') && <label className={styles.fileLink}>Replace file<input type="file" accept=".pdf,.doc,.docx" onChange={handleFile} /></label>}</section>}
-        {submitted && <section className={styles.success}>
-          <h2>Contained confirmation state</h2><p>✓ Application submitted</p><h3>You’re in the running.</h3>
-          <p>Application KH-AP-9012 sent to {selectedJob.company} on 11 Oct 2026, 11:20 WAT.</p>
-          <p>Attached: {fileName}. Expected review within 7 business days; an update is not a job offer.</p>
-          <button className={styles.linkButton} type="button" onClick={()=>onNavigate?.('orders-bookings')}>View application status</button>
-          <p>This panel documents the successful submission outcome, not a second screen.</p>
-        </section>}
-      </aside>
+      <aside className={styles.right}><section className={styles.card}><h2>You're applying for</h2><h3>{selectedJob?.title||'No job selected'}</h3><p>{selectedJob?.company||''}</p><p>{selectedJob?.location||''} · {selectedJob?.arrangement||''}</p><p>{selectedJob?.salary||'Salary not specified'}</p><p>KHUB sends the application to the job owner and records the status in your account.</p></section></aside>
     </form>
-    <div className={styles.backRow}><button className={styles.textButton} type="button" onClick={onBack}>← Back to jobs</button></div>
   </main>;
 }
