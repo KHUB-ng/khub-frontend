@@ -337,10 +337,19 @@ function App() {
       'job-application', 'delivery-details', 'checkout', 'payment-success',
       'cart', 'seller-listing', 'storefront', 'ride-tracking'
     ]);
+    if (protectedPages.has(destination) && authLoading) {
+      notify('Checking your KHUB session. Please try again in a moment.');
+      return;
+    }
     if (protectedPages.has(destination) && !currentUser) {
       setPage('account');
       notify('Sign in to access this part of KHUB.');
       window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
+
+    if (destination === 'admin-dashboard' && currentUser?.role_code !== 'admin') {
+      notify('Administrator access is required for this workspace.');
       return;
     }
 
