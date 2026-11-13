@@ -2063,6 +2063,8 @@ function App() {
                     ['Prohibited Items & Activities', 'legal'],
                     ['Dispute Resolution', 'support'],
                     ['Account Suspension & Appeals', 'support'],
+                    ['Cookie & Local Storage Policy', 'legal'],
+                    ['Sponsored Advertising Policy', 'legal'],
                   ],
                 },
                 {
