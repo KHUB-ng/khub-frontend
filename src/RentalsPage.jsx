@@ -3,6 +3,7 @@ import { ArrowLeft, ArrowUpRight, CalendarDays, MapPin, SlidersHorizontal } from
 import styles from './RentalsPage.module.css';
 import { listingsApi } from './lib/listings.js';
 import LiveMap from './LiveMap.jsx';
+import SponsoredAds from './SponsoredAds.jsx';
 
 const money = value => `₦${Number(value || 0).toLocaleString('en-NG')}`;
 const mapRental = row => ({ ...row, id: row.pid, pid: row.pid, title: row.title, location: row.location || 'Nigeria', price: (row.effective_price_kobo ?? row.price_kobo ?? 0) / 100, image: null, meta: row.description || row.category || 'Rental listing', type: row.category || 'Rental' });
@@ -54,6 +55,7 @@ export default function RentalsPage({ onHome, onShop, onNavigate }) {
         <button className={styles.primary} onClick={() => setFilters(true)}>Search rentals</button>
       </section>
       <div className={styles.categories}>{['All rentals','Short stays','Equipment','Event spaces','Vehicles'].map(c=><button key={c} className={type===c?styles.activeCategory:''} onClick={()=>setType(c)}>{c}</button>)}</div>
+      <SponsoredAds placement="rentals" onSelect={item=>setSelected(mapRental(item))}/>
       <div className={styles.resultsBar}><span>{filtered.length} live rental listings{nights ? ` · ${nights} requested days` : ''}</span><button onClick={()=>setFilters(v=>!v)}><SlidersHorizontal size={15}/> Filters</button></div>
       {filters && <div className={styles.filterPanel}><label>Search rentals<input value={query} onChange={e=>setQuery(e.target.value)} placeholder="Apartment, camera, studio..."/></label><button onClick={()=>{setType('All rentals');setQuery('');setLocation('');setStart('');setEnd('');}}>Clear filters</button></div>}
       {loading && <div className={styles.empty}>Loading live rental listings…</div>}
