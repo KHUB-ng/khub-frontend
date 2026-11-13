@@ -360,3 +360,4 @@
     height: 190px;
   }
 }
+.providerImageFallback{display:grid;place-items:center;min-height:180px;background:#eeece5;color:#718078;font-size:12px;font-weight:650}
