@@ -1,54 +1,64 @@
-import React, { useState } from 'react';
-import { CheckCircle2, Circle, Phone, MessageCircle, ShieldCheck, RefreshCw, Share2, LifeBuoy } from 'lucide-react';
+import React, { useCallback, useEffect, useState } from 'react';
+import { ArrowLeft, CheckCircle2, RefreshCw, Share2, LifeBuoy } from 'lucide-react';
 import styles from './RideTrackingPage.module.css';
+import { api } from './lib/api.js';
 
-export default function RideTrackingPage({ user = {}, onBack = () => {}, onNavigate = () => {} }) {
-  const [notice, setNotice] = useState('');
-  const [refreshing, setRefreshing] = useState(false);
-  const [ended, setEnded] = useState(false);
-  const riderName = user?.name || 'Tomi Adeyemi';
-  const notify = (message) => setNotice(message);
-  const refresh = () => { setRefreshing(true); setNotice('Tracking refreshed. The latest illustrative location is 11:38 WAT.'); window.setTimeout(() => setRefreshing(false), 700); };
+const money=kobo=>'₦'+(Number(kobo||0)/100).toLocaleString('en-NG',{maximumFractionDigits:2});
+const label=point=>point?.label||'Location not available';
+
+export default function RideTrackingPage({user={},ridePid,onBack=()=>{},onNavigate=()=>{}}) {
+  const [ride,setRide]=useState(null);
+  const [loading,setLoading]=useState(true);
+  const [busy,setBusy]=useState(false);
+  const [error,setError]=useState('');
+  const [notice,setNotice]=useState('');
+  const [rating,setRating]=useState('5');
+  const [comment,setComment]=useState('');
+
+  const load=useCallback(async()=>{
+    setLoading(true);setError('');
+    try{
+      let selected;
+      if(ridePid)selected=await api.get('/rides/'+encodeURIComponent(ridePid));
+      else{
+        const rows=await api.get('/rides/mine');
+        const list=Array.isArray(rows)?rows:rows?.items||[];
+        selected=list.find(item=>['requested','accepted','arriving','started','dispute_open'].includes(item.status))||list[0];
+      }
+      setRide(selected||null);
+    }catch(err){setError(err?.message||'Ride tracking information could not be loaded.');}
+    finally{setLoading(false);}
+  },[ridePid]);
+  useEffect(()=>{load();},[load]);
+
+  const action=async(kind,payload={})=>{
+    if(!ride?.pid)return;
+    setBusy(true);setError('');setNotice('');
+    try{const result=await api.post('/rides/'+encodeURIComponent(ride.pid)+'/'+kind,payload);setNotice('Your request was recorded by KHUB.');if(result?.pid)setRide(result);else await load();}
+    catch(err){setError(err?.message||'This ride action could not be completed.');}
+    finally{setBusy(false);}
+  };
+  const share=async()=>{
+    if(!ride)return;
+    const text='KHUB ride '+ride.pid+' · '+label(ride.pickup)+' to '+label(ride.dest)+' · Status: '+ride.status;
+    try{if(navigator.share)await navigator.share({title:'KHUB trip details',text});else{await navigator.clipboard.writeText(text);setNotice('Trip reference and route copied.');}}
+    catch(err){if(err?.name!=='AbortError')setNotice(text);}
+  };
+
   return <main className={styles.page}>
-    <header className={styles.heading}>
-      <h1>You’re on your way.</h1>
-      <p>06 Rides and logistics / Active trip tracking</p>
-      <p>Ride KH-RD-5520 · Economy · {ended ? 'Trip completed' : 'In progress'} · Updated 11 Oct 2026, 11:38 WAT</p>
-    </header>
-    <div className={styles.layout}>
+    <header className={styles.heading}><h1>Ride status and trip details.</h1><p>06 Rides and logistics / Your trip</p><p>Authenticated ride record · {ride?.pid||'No active ride selected'}</p></header>
+    {loading&&<p>Loading ride details…</p>}{error&&<div className={styles.notice} role="alert">{error}</div>}{notice&&<div className={styles.notice} role="status">{notice}</div>}
+    {!loading&&ride&&<div className={styles.layout}>
       <div className={styles.leftColumn}>
-        <section className={styles.mapCard} aria-label="Illustrative route map">
-          <div className={styles.mapTop}><strong>Lekki · Admiralty Way</strong><span>8.2 km · 24 min</span></div>
-          <svg className={styles.route} viewBox="0 0 700 330" preserveAspectRatio="none" role="img" aria-label="Route from Lekki to Victoria Island"><path d="M35 54 V116 H240 V174 H470 V228" fill="none" stroke="#123f32" strokeWidth="5" strokeLinejoin="miter"/><circle cx="35" cy="54" r="7" fill="#123f32" stroke="#fff" strokeWidth="3"/><circle cx="470" cy="228" r="7" fill="#123f32" stroke="#fff" strokeWidth="3"/><circle cx="240" cy="174" r="20" fill="#123f32"/><text x="240" y="178" fill="#fff" textAnchor="middle" fontSize="10">C O</text></svg>
-          <strong className={styles.mapDestination}>Victoria Island · Ozumba</strong>
-        </section>
-        <p className={styles.caption}>Illustrative route, not a live map · Lagos</p>
-        <section className={styles.card + ' ' + styles.arrival}>
-          <h2>{ended ? 'Trip completed' : 'Arriving in about 12 minutes'}</h2>
-          <p className={styles.status}><span className={styles.dot}/>{ended ? 'Completed · Final fare to be confirmed' : 'In progress · ETA 11:50 WAT'}</p>
-          <h3>Victoria Island</h3><p>18 Ozumba Mbadiwe Avenue</p>
-          <p className={styles.routeSummary}>Pickup: 12 Admiralty Way, Lekki Phase 1 · 8.2 km total route · Fare estimate ₦5,200</p>
-        </section>
-        <section className={styles.safety}><strong>Safety comes first</strong><p>Share your trip with someone you trust. For an immediate emergency, call Nigeria’s 112; KHUB support is not an emergency service.</p><button className={styles.link} onClick={() => notify('Trip details are ready to share: KH-RD-5520 · Lekki to Victoria Island · Driver Chinedu Okeke.')}>Share trip details</button></section>
+        <section className={styles.card+' '+styles.arrival}><h2>{ride.status==='completed'?'Trip completed':ride.status==='cancelled'?'Trip cancelled':'Your trip status'}</h2><p className={styles.status}><CheckCircle2 size={14}/> {ride.status}</p><h3>{label(ride.dest)}</h3><p>Pickup · {label(ride.pickup)}</p><p>Destination · {label(ride.dest)}</p><p>Distance · {(Number(ride.distance_m||0)/1000).toFixed(2)} km</p><p>Fare · {ride.fare_display||money(ride.fare_kobo)}</p><p>Platform commission · {money(ride.commission_kobo)} · Driver net · {money(ride.driver_net_kobo)}</p><p>Created · {ride.created_at?new Date(ride.created_at).toLocaleString('en-NG'):'—'}</p></section>
+        <section className={styles.safety}><strong>Safety and support</strong><p>Use the ride reference when contacting support. KHUB support is not an emergency service.</p><button className={styles.link} onClick={share}><Share2 size={14}/> Share trip details</button></section>
       </div>
       <aside className={styles.rightColumn}>
-        <section className={styles.card + ' ' + styles.driver}>
-          <h2>Your driver</h2><div className={styles.driverRow}><div className={styles.avatar}>CO</div><div><h3>Chinedu Okeke</h3><p>★ 4.9 · 1,240 trips</p></div></div>
-          <p>✓ Driver identity verified</p><p>Silver Toyota Corolla</p><h3>Plate · KJA 482 GT</h3>
-          <div className={styles.actions}><button className={styles.primary} onClick={() => notify('Demo call action: Chinedu Okeke · +234 803 000 5520') }><Phone size={14}/> Call driver</button><button className={styles.link} onClick={() => onNavigate('messages')}><MessageCircle size={14}/> Message</button></div>
-          <p className={styles.small}>Check driver and plate against this card. Do not board a different vehicle.</p>
-        </section>
-        <section className={styles.card + ' ' + styles.timeline}><h2>Trip timeline</h2>
-          <div className={styles.event}><p>✓ Driver assigned · 11:26</p><span>Chinedu accepted your Economy request.</span></div>
-          <div className={styles.event}><p>✓ Picked up · 11:30</p><span>Pickup confirmed at Admiralty Way.</span></div>
-          <div className={styles.event}><p>{ended ? '✓ Trip completed' : '● On your way · 11:38'}</p><span>{ended ? 'Your trip has been marked complete.' : 'Crossing towards Victoria Island.'}</span></div>
-          <div className={styles.event}><p>○ Arrival · About 11:50</p><span>Final fare confirmed after trip completion.</span></div>
-        </section>
-        <section className={styles.card + ' ' + styles.help}><h2>Need help now?</h2><button className={styles.primary + ' ' + styles.full} onClick={() => onNavigate('support')}><LifeBuoy size={14}/> Safety &amp; trip support</button><button className={styles.link} onClick={() => {setEnded(true);notify('Trip end request recorded in this demo. Final fare will be confirmed after completion.');}}>End trip / report a concern</button><p>Ending early updates the route and final fare. No cancellation fee added once the ride is underway.</p></section>
-        <section className={styles.tip}><p>State example · Location delayed<br/>Last location update 2 minutes ago. Route and driver details stay visible. Refresh or call your driver; don’t assume the trip has stopped.</p><button className={styles.link} onClick={refresh}><RefreshCw size={13} className={refreshing ? styles.spin : ''}/> {refreshing ? 'Refreshing…' : 'Refresh tracking'}</button></section>
+        <section className={styles.card}><h2>Available actions</h2>{ride.status==='requested'&&<button className={styles.primary} disabled={busy} onClick={()=>action('cancel')}>Cancel ride request</button>}{['accepted','arriving','started'].includes(ride.status)&&<button className={styles.primary} disabled={busy} onClick={()=>action('dispute')}>Report a ride issue</button>}<button className={styles.link} onClick={load}><RefreshCw size={14}/> Refresh ride status</button><button className={styles.link} onClick={()=>onNavigate('messages')}>Open messages</button><button className={styles.link} onClick={()=>onNavigate('support')}><LifeBuoy size={14}/> Contact support</button></section>
+        {ride.status==='completed'&&<section className={styles.card}><h2>Rate your ride</h2><label>Rating<select value={rating} onChange={e=>setRating(e.target.value)}><option value="5">5 · Excellent</option><option value="4">4 · Good</option><option value="3">3 · Average</option><option value="2">2 · Poor</option><option value="1">1 · Very poor</option></select></label><label>Comment<textarea rows="3" value={comment} onChange={e=>setComment(e.target.value)} placeholder="Optional feedback"/></label><button className={styles.primary} disabled={busy} onClick={()=>action('rate',{stars:Number(rating),comment})}>Submit rating</button></section>}
       </aside>
-    </div>
-    {notice && <div className={styles.notice} role="status"><span>{notice}</span><button onClick={() => setNotice('')} aria-label="Dismiss message">×</button></div>}
-    <button className={styles.back} onClick={onBack}>← Back to orders &amp; bookings</button>
+    </div>}
+    {!loading&&!ride&&!error&&<section className={styles.card}><h2>No ride record found</h2><p>Your account has no ride available for tracking.</p><button className={styles.primary} onClick={()=>onNavigate('ride-booking')}>Request a ride</button></section>}
+    <button className={styles.back} onClick={onBack}><ArrowLeft size={14}/> Back to orders &amp; bookings</button>
   </main>;
 }
