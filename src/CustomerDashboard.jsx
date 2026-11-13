@@ -76,7 +76,7 @@ export default function CustomerDashboard({user={},onNavigate=()=>{},cartCount=0
       <div className={styles.columns}>
         <div className={styles.mainColumn}>
           <section className={styles.panel}><h2>Recent activity</h2>
-            {activities.map(item=><article key={item.id} className={styles.activity}><h3>{item.title}</h3><p>{item.kind} · {item.status} · {item.amount||'—'} · {date(item.date)}</p><button className={styles.textLink} onClick={()=>onNavigate(item.action)}>Open activity</button></article>)}
+            {activities.map(item=><article key={item.id}><h3>{item.title}</h3><p>{item.kind} · {item.status} · {item.amount||'—'} · {date(item.date)}</p><button className={styles.textLink} onClick={()=>onNavigate(item.action)}>Open activity</button></article>)}
             {!loading&&activities.length===0&&<p>No orders, rides, deliveries or applications have been recorded yet.</p>}
             <button className={styles.primary} onClick={()=>onNavigate('orders-bookings')}>View all activity</button>
           </section>
