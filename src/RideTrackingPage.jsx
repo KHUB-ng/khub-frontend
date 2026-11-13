@@ -2,12 +2,14 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { ArrowLeft, CheckCircle2, RefreshCw, Share2, LifeBuoy } from 'lucide-react';
 import styles from './RideTrackingPage.module.css';
 import { api } from './lib/api.js';
+import LiveMap from './LiveMap.jsx';
 
 const money=kobo=>'₦'+(Number(kobo||0)/100).toLocaleString('en-NG',{maximumFractionDigits:2});
 const label=point=>point?.label||'Location not available';
 
 export default function RideTrackingPage({user={},ridePid,onBack=()=>{},onNavigate=()=>{}}) {
   const [ride,setRide]=useState(null);
+  const [liveLocation,setLiveLocation]=useState(null);
   const [loading,setLoading]=useState(true);
   const [busy,setBusy]=useState(false);
   const [error,setError]=useState('');
@@ -31,6 +33,15 @@ export default function RideTrackingPage({user={},ridePid,onBack=()=>{},onNaviga
   },[ridePid]);
   useEffect(()=>{load();},[load]);
 
+  useEffect(()=>{
+    if(!ride?.pid || ['completed','cancelled','refunded'].includes(ride.status)) return undefined;
+    let active=true;
+    const poll=async()=>{try{const value=await api.get('/rides/'+encodeURIComponent(ride.pid)+'/location');if(active){setLiveLocation(value?.location||null);if(value?.status&&value.status!==ride.status)setRide(current=>current?{...current,status:value.status}:current);}}catch{/* Keep the last known location during brief network interruptions. */}};
+    poll();
+    const timer=window.setInterval(poll,5000);
+    return()=>{active=false;window.clearInterval(timer);};
+  },[ride?.pid,ride?.status]);
+
   const action=async(kind,payload={})=>{
     if(!ride?.pid)return;
     setBusy(true);setError('');setNotice('');
@@ -50,6 +61,7 @@ export default function RideTrackingPage({user={},ridePid,onBack=()=>{},onNaviga
     {loading&&<p>Loading ride details…</p>}{error&&<div className={styles.notice} role="alert">{error}</div>}{notice&&<div className={styles.notice} role="status">{notice}</div>}
     {!loading&&ride&&<div className={styles.layout}>
       <div className={styles.leftColumn}>
+        <section className={styles.card}><h2>Live driver map</h2><LiveMap label="Live driver location" latitude={liveLocation?.lat ?? ride.pickup?.lat} longitude={liveLocation?.lng ?? ride.pickup?.lng} query={!liveLocation&&!ride.pickup?.lat?label(ride.pickup):undefined}/><p>{liveLocation?.seen_at?`Last location update · ${new Date(liveLocation.seen_at).toLocaleTimeString('en-NG')}`:'Waiting for the driver to share a live location. Location updates refresh automatically.'}</p></section>
         <section className={styles.card+' '+styles.arrival}><h2>{ride.status==='completed'?'Trip completed':ride.status==='cancelled'?'Trip cancelled':'Your trip status'}</h2><p className={styles.status}><CheckCircle2 size={14}/> {ride.status}</p><h3>{label(ride.dest)}</h3><p>Pickup · {label(ride.pickup)}</p><p>Destination · {label(ride.dest)}</p><p>Distance · {(Number(ride.distance_m||0)/1000).toFixed(2)} km</p><p>Fare · {ride.fare_display||money(ride.fare_kobo)}</p><p>Platform commission · {money(ride.commission_kobo)} · Driver net · {money(ride.driver_net_kobo)}</p><p>Created · {ride.created_at?new Date(ride.created_at).toLocaleString('en-NG'):'—'}</p></section>
         <section className={styles.safety}><strong>Safety and support</strong><p>Use the ride reference when contacting support. KHUB support is not an emergency service.</p><button className={styles.link} onClick={share}><Share2 size={14}/> Share trip details</button></section>
       </div>
