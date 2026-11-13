@@ -92,21 +92,7 @@ export default function AdminDashboard({ onNavigate }) {
     finally { setSaving(''); }
   };
 
-  const kycAction = async (row, decision) => {
-    const userPid = row.user_pid || row.user?.pid;
-    const docType = row.doc_type || row.document_type;
-    if (!userPid || !docType) {
-      setError('This KYC record does not contain the identifiers required by the backend action.');
-      return;
-    }
-    setSaving(userPid);
-    try {
-      await api.post(`/admin/kyc/${encodeURIComponent(userPid)}/${encodeURIComponent(docType)}/${decision}`, decision === 'reject' ? { note: 'Please resubmit a valid document.' } : {});
-      setNotice(`KYC document ${decision} action completed.`);
-      await load();
-    } catch (err) { setError(err?.message || 'KYC action failed.'); }
-    finally { setSaving(''); }
-  };
+
 
   const listPanel = (title, value, renderRow) => {
     const rows = asArray(value);
@@ -146,7 +132,7 @@ export default function AdminDashboard({ onNavigate }) {
       </section>}
 
       {!loading && active === 'Payout approvals' && listPanel('Pending withdrawal approvals', data.withdrawals, row => <><strong>{row.pid}</strong><p>Amount: {row.amount_display || row.amount_kobo} · Status: {row.status}</p><div className={styles.actions}><button className={styles.primary} disabled={Boolean(saving)} onClick={() => withdrawalAction(row.pid, 'approve')}>Approve via Flutterwave</button><button className={styles.link} disabled={Boolean(saving)} onClick={() => withdrawalAction(row.pid, 'reject')}>Reject</button></div></>)}
-      {!loading && active === 'Identity verification' && listPanel('KYC review queue', data.kyc, row => <><strong>{row.name || row.user_name || row.user_pid}</strong><p>{row.doc_type || row.document_type} · {row.status}</p><div className={styles.actions}><button className={styles.primary} disabled={Boolean(saving)} onClick={() => kycAction(row, 'approve')}>Approve</button><button className={styles.link} disabled={Boolean(saving)} onClick={() => kycAction(row, 'reject')}>Reject</button></div></>)}
+      {!loading && active === 'Identity verification' && <>{listPanel('KYC metadata queue', data.kyc, row => <><strong>{row.name || row.user_name || row.user_pid}</strong><p>{row.doc_type || row.document_type} · {row.status}</p><p>Document review actions are disabled here until private KYC storage and authorised short-lived document access are in place.</p></>)}<section className={styles.panel}><h2>Security restriction</h2><p>Do not approve identity documents based only on public UUID-based file URLs. KHUB must complete private object storage and audited document access before administrators can review sensitive documents safely.</p></section></>}
       {!loading && active === 'Users & roles' && listPanel('User directory', data.users)}
       {!loading && active === 'Audit log' && listPanel('Administrative audit events', data.audit)}
       {!loading && active === 'Reports' && <><section className={styles.panel}><h2>Daily platform statistics</h2>{listPanel('Stats', data.stats)}</section>{listPanel('Commission accruals', data.commissionAccruals)}{listPanel('Escrow oversight', data.escrows)}{listPanel('Wallet oversight', data.wallets)}</>}
