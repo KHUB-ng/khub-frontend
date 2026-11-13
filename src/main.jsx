@@ -1162,6 +1162,7 @@ function App() {
           initialQuery={globalSearch}
           onHome={() => navigate('home')}
           onAccount={() => navigate('account')}
+          onNavigate={navigate}
         />
       ) : page === 'account' ? (
         <AccountPage
