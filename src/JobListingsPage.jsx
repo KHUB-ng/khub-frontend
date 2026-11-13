@@ -108,7 +108,7 @@ export default function JobListingsPage({ onViewJob, onBack = () => {}, savedJob
       const matchesVerified = !filterSet || !filterSet.verifiedOnly || job.verified;
       const matchesSalary = !filterSet || job.salaryMax >= filterSet.minSalary && job.salaryMin <= filterSet.maxSalary;
       const matchesExperience = !filterSet || filterSet.experience === 'All levels' || (filterSet.experience === 'Entry level' ? job.level.toLowerCase().includes('entry') : filterSet.experience === 'Experienced' ? !job.level.toLowerCase().includes('entry') : true);
-      return matchesQuery && matchesTab && matchesLocation && matchesType && matchesMode && matchesVerified && matchesSalary && matchesExperience;
+      return matchesQuery && matchesTab && matchesLocation && matchesType && matchesMode && matchesSalary && matchesExperience;
     });
     if (sort === 'Salary: high to low') result = [...result].sort((a,b)=>b.salaryMax-a.salaryMax);
     if (sort === 'Salary: low to high') result = [...result].sort((a,b)=>a.salaryMin-b.salaryMin);
