@@ -53,7 +53,7 @@ export default function WalletPage({ user = {}, onBack = () => {}, onNavigate = 
         if (txRef) {
           try {
             const result = await walletApi.fundingStatusByReference(txRef);
-            if (active) setNotice(result.status === 'successful'
+            if (active) setNotice(result.status === 'succeeded'
               ? 'Flutterwave payment verified by KHUB. Your wallet balance has been refreshed.'
               : 'Flutterwave returned to KHUB. The payment is not yet confirmed; your wallet remains unchanged until server-side verification succeeds.');
           } catch (err) {
