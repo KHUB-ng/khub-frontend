@@ -506,6 +506,7 @@ function App() {
       <>
         <SiteHeader
           page={page}
+          user={currentUser}
           onNavigate={navigate}
           onList={handleList}
           cartCount={cartItems.reduce(
@@ -525,6 +526,7 @@ function App() {
       <>
         <SiteHeader
           page={page}
+          user={currentUser}
           onNavigate={navigate}
           onList={handleList}
           cartCount={cartItems.reduce(
@@ -547,6 +549,7 @@ function App() {
       <>
         <SiteHeader
           page={page}
+          user={currentUser}
           onNavigate={navigate}
           onList={handleList}
           cartCount={cartItems.reduce(
@@ -571,6 +574,7 @@ function App() {
       <>
         <SiteHeader
           page={page}
+          user={currentUser}
           onNavigate={navigate}
           onList={handleList}
           cartCount={cartItems.reduce(
@@ -594,6 +598,7 @@ function App() {
       <>
         <SiteHeader
           page={page}
+          user={currentUser}
           onNavigate={navigate}
           onList={handleList}
           cartCount={cartItems.reduce(
