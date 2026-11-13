@@ -1,88 +1,37 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import styles from './ReferralsPage.module.css';
+import { api } from './lib/api.js';
 
-const referrals = [
-  { name: 'Bisi A.', milestone: 'Eligible order complete', reward: '₦1,000', status: '✓ Qualified / credited', qualified: true },
-  { name: 'Kunle O.', milestone: 'Return window open', reward: '₦1,000', status: '◷ Pending', qualified: false },
-  { name: 'Zainab M.', milestone: 'Checks in progress', reward: '₦1,000', status: '◷ Pending', qualified: false },
-  { name: 'Emeka N.', milestone: 'Signed up · No order', reward: '₦0', status: '○ Not qualified', qualified: false },
-];
-
-export default function ReferralsPage({ onBack = () => {}, onWallet = () => {} }) {
-  const [notice, setNotice] = useState('');
-  const code = 'TOMI1428';
-  const link = `khub.example/invite/${code}`;
-  const copyInvite = async () => {
-    try {
-      await navigator.clipboard.writeText(`${code}\n${link}`);
-      setNotice('Referral code and link copied.');
-    } catch {
-      setNotice(`Your referral code is ${code}. Copy it to share with friends.`);
-    }
+const money = kobo => '₦' + (Number(kobo || 0) / 100).toLocaleString('en-NG');
+export default function ReferralsPage({ onBack=()=>{}, onWallet=()=>{} }) {
+  const [data,setData]=useState(null);
+  const [notice,setNotice]=useState('');
+  const [error,setError]=useState('');
+  const [loading,setLoading]=useState(true);
+  useEffect(()=>{let active=true;api.get('/referrals').then(value=>{if(active)setData(value);}).catch(err=>{if(active)setError(err?.message||'Referral information could not be loaded.');}).finally(()=>{if(active)setLoading(false);});return()=>{active=false;};},[]);
+  const code=data?.code||'';
+  const link=code?(window.location.origin+'/?ref='+encodeURIComponent(code)):'';
+  const copyInvite=async()=>{
+    try{await navigator.clipboard.writeText('Referral code: '+code+'\nInvite link: '+link);setNotice('Your KHUB referral code and link were copied.');}
+    catch{setNotice('Your referral code is '+code+'. Copy it to share.');}
   };
-  const shareInvite = async () => {
-    const text = `Join me on KHUB! Use my referral code ${code}: ${link}`;
-    try {
-      if (navigator.share) await navigator.share({ title: 'Join KHUB', text, url: link });
-      else if (navigator.clipboard) { await navigator.clipboard.writeText(text); setNotice('Invitation copied and ready to share.'); }
-      else setNotice(text);
-    } catch (error) {
-      if (error?.name !== 'AbortError') setNotice(text);
-    }
+  const shareInvite=async()=>{
+    const message='Join me on KHUB. Use my referral code '+code+'.';
+    try{if(navigator.share)await navigator.share({title:'Join KHUB',text:message,url:link});else{await navigator.clipboard.writeText(message+' '+link);setNotice('Invitation copied and ready to share.');}}
+    catch(err){if(err?.name!=='AbortError')setNotice('Share your code '+code+' with your invitation link: '+link);}
   };
-
+  const stats=data?.stats||{};
   return <div className={styles.page}>
-    <div style={{ marginBottom: 18 }}><button type="button" onClick={onBack} aria-label="Go back to the previous page" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, border: '1px solid #dce8df', background: '#fff', color: '#176b43', borderRadius: 999, padding: '10px 16px', fontWeight: 700, cursor: 'pointer', boxShadow: '0 2px 8px rgba(20,60,35,.06)' }}><span aria-hidden="true">←</span> Back</button></div>
-    <header className={styles.header}>
-      <h1>Good things are better together.</h1>
-      <p>09 Personal hub / Referrals<br/>Invite your people to KHUB. Track each eligible reward without guesswork.</p>
-    </header>
-
-    <div className={styles.topGrid}>
-      <section className={`${styles.card} ${styles.inviteCard}`}>
-        <h2>Your invitation</h2>
-        <h3>Share your local hub.</h3>
-        <div className={styles.readout}><span>Referral code</span><strong>{code}</strong></div>
-        <div className={styles.readout}><span>Illustrative referral link</span><strong>{link}</strong></div>
-        <div className={styles.actions}><button className={styles.primary} onClick={copyInvite}>Copy code / link</button><button className={styles.link} onClick={shareInvite}>Share invitation</button></div>
-        {notice && <p className={styles.notice} role="status">{notice}</p>}
-      </section>
-      <section className={styles.card}>
-        <h2>How it works</h2>
-        <p>1 · Invite a friend using your code.</p>
-        <p>2 · They complete a first eligible order of ₦10,000 or more.</p>
-        <p>3 · After the return / dispute window and checks, ₦1,000 is added to your available wallet.</p>
-        <p>Illustrative programme · Terms below</p>
-      </section>
+    <div style={{marginBottom:18}}><button type="button" onClick={onBack} aria-label="Go back" style={{display:'inline-flex',alignItems:'center',gap:8,border:'1px solid #dce8df',background:'#fff',color:'#176b43',borderRadius:999,padding:'10px 16px',fontWeight:700,cursor:'pointer'}}>← Back</button></div>
+    <header className={styles.header}><h1>Good things are better together.</h1><p>09 Personal hub / Referrals<br/>Invite people to KHUB and track rewards from the referral service.</p></header>
+    {loading&&<p>Loading referral account…</p>}{error&&<p className={styles.notice} role="alert">{error}</p>}
+    {data&&<><div className={styles.topGrid}>
+      <section className={styles.card+' '+styles.inviteCard}><h2>Your invitation</h2><h3>Share your KHUB code.</h3><div className={styles.readout}><span>Referral code</span><strong>{code}</strong></div><div className={styles.readout}><span>Invitation link</span><strong>{link}</strong></div><div className={styles.actions}><button className={styles.primary} onClick={copyInvite}>Copy code / link</button><button className={styles.link} onClick={shareInvite}>Share invitation</button></div>{notice&&<p className={styles.notice} role="status">{notice}</p>}</section>
+      <section className={styles.card}><h2>How rewards work</h2><p>Share your unique referral code with a new KHUB member.</p><p>Referral eligibility and reward timing are determined by the backend programme rules, including qualifying completed transactions and fraud checks.</p><p>Referee identities are intentionally not exposed in your referral history.</p><strong>Current reward: {data.reward_naira_display}</strong></section>
     </div>
-
-    <section className={styles.metrics} aria-label="Referral summary">
-      <article className={styles.card}><strong>8</strong><span>Invited</span><small>Friends using your code</small></article>
-      <article className={styles.card}><strong>3</strong><span>Qualified</span><small>Orders completed + checks</small></article>
-      <article className={styles.card}><strong>₦3,000</strong><span>Rewards earned</span><small>Already available in wallet</small></article>
-      <article className={styles.card}><strong>₦2,000</strong><span>Pending rewards</span><small>2 friends awaiting checks</small></article>
-    </section>
-
-    <div className={styles.bottomGrid}>
-      <section className={styles.card}>
-        <h2>Reward progress</h2>
-        <div className={styles.progressList}>{referrals.map((item) => <article key={item.name} className={styles.referralRow}>
-          <p>{item.name}</p>
-          <p>Milestone: {item.milestone}　/　Reward: {item.reward}　/　Status: {item.status}</p>
-        </article>)}</div>
-        <p>Showing 4 of 8 invitations. Progress requires qualification, not just a signup.</p>
-      </section>
-      <aside className={styles.sideStack}>
-        <section className={styles.card}>
-          <h2>Clear, illustrative terms</h2>
-          <p>₦1,000 per eligible new customer, maximum 10 rewards (₦10,000) per calendar month. Minimum first order ₦10,000; excludes cancelled, refunded or disputed transactions.</p>
-          <p>No self-referrals, duplicate accounts or cash transfer purchases. Checks may take up to 7 business days after the return window closes.</p>
-          <p>Rewards are not guaranteed until qualified. This is an example programme; production terms must be approved and dated before launch.</p>
-          <button className={styles.link} onClick={onWallet}>View wallet rewards</button>
-        </section>
-        <section className={styles.noticeCard}>Progress this month · 3 / 10 qualified<br/>₦3,000 earned. You have room for 7 more qualified rewards this month; pending rewards are not spendable yet.</section>
-      </aside>
-    </div>
+    <section className={styles.metrics} aria-label="Referral summary"><article className={styles.card}><strong>{stats.total||0}</strong><span>Invited</span><small>Recorded referrals</small></article><article className={styles.card}><strong>{stats.rewarded||0}</strong><span>Rewarded</span><small>Backend-confirmed rewards</small></article><article className={styles.card}><strong>{stats.earned_display||money(stats.earned_kobo)}</strong><span>Rewards earned</span><small>Recorded by KHUB</small></article><article className={styles.card}><strong>{stats.pending||0}</strong><span>Pending</span><small>Awaiting eligibility checks</small></article></section>
+    <div className={styles.bottomGrid}><section className={styles.card}><h2>Referral progress</h2>{(data.referrals||[]).map((item,index)=><article key={item.created_at+'-'+index} className={styles.referralRow}><p>Referral {index+1}</p><p>Status: {item.status} · Reward: {item.reward_kobo==null?'Pending':money(item.reward_kobo)} · Joined: {new Date(item.created_at).toLocaleDateString('en-NG')}</p></article>)}{!data.referrals?.length&&<p>No referrals have been recorded yet. Share your code to invite someone.</p>}</section>
+      <aside className={styles.sideStack}><section className={styles.card}><h2>Reward status</h2><p>Pending rewards are not available to spend. Only rewards confirmed and credited by the backend are included in earned totals.</p><button className={styles.link} onClick={onWallet}>View wallet</button></section></aside></div></>}
     <button className={styles.back} onClick={onBack}>Back to dashboard</button>
   </div>;
 }
