@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Heart, Check, ChevronDown, Search } from 'lucide-react';
+import { Heart, ChevronDown, Search } from 'lucide-react';
 import styles from './JobListingsPage.module.css';
 import { listingsApi } from './lib/listings.js';
 
@@ -56,7 +56,6 @@ export default function JobListingsPage({ onViewJob, onBack = () => {}, savedJob
   const [remote, setRemote] = useState(true);
   const [onsite, setOnsite] = useState(true);
   const [experience, setExperience] = useState('All levels');
-  const [verifiedOnly, setVerifiedOnly] = useState(false);
   const [appliedFilters, setAppliedFilters] = useState({});
   const [sort, setSort] = useState('Newest');
   const [alertMessage, setAlertMessage] = useState('');
@@ -118,7 +117,7 @@ export default function JobListingsPage({ onViewJob, onBack = () => {}, savedJob
 
   const applyFilters = () => {
     const parts = salary.replace(/[₦,\s]/g, '').split(/[–-]/).map(Number);
-    setAppliedFilters({ fullTime, contract, hybrid, remote, onsite, verifiedOnly, experience, minSalary: parts[0] || 0, maxSalary: parts[1] || 100000000 });
+    setAppliedFilters({ fullTime, contract, hybrid, remote, onsite, experience, minSalary: parts[0] || 0, maxSalary: parts[1] || 100000000 });
     setAlertMessage('');
   };
   const createAlert = () => setAlertMessage('Job alerts are not supported by the current backend API. Your search has not been saved.');
