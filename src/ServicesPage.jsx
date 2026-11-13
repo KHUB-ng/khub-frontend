@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import styles from './ServicesPage.module.css';
 import { listingsApi } from './lib/listings.js';
 import LiveMap from './LiveMap.jsx';
+import SponsoredAds from './SponsoredAds.jsx';
 
 const money = amount => `₦${Number(amount || 0).toLocaleString('en-NG')}`;
 const mapService = row => ({ ...row, id: row.pid, pid: row.pid, title: row.title, category: row.category || 'Service', provider: 'KHUB service provider', location: row.location || 'Nigeria', price: (row.effective_price_kobo ?? row.price_kobo ?? 0) / 100, image: null });
@@ -47,6 +48,7 @@ export default function ServicesPage({ onHome, onNavigate }) {
       <label className={styles.searchBox}><span>Location</span><input value={location} onChange={e=>setLocation(e.target.value)} placeholder="City or area"/></label>
     </section>
     <nav className={styles.tabs} aria-label="Service categories">{categories.map(category=><button key={category} className={activeCategory===category?styles.activeTab:''} onClick={()=>setActiveCategory(category)}>{category}</button>)}</nav>
+    <SponsoredAds placement="services" onSelect={item=>setSelected(mapService(item))}/>
     <div className={styles.content}>
       <section className={styles.results}>
         <div className={styles.resultsTop}><p>{providers.length} live service listings</p></div>
