@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { ArrowLeft, MapPin, Wallet, Navigation, CheckCircle2 } from 'lucide-react';
 import styles from './RideBookingPage.module.css';
 import { api } from './lib/api.js';
+import LiveMap from './LiveMap.jsx';
 
 export default function RideBookingPage({user={},onNavigate=()=>{},onBack=()=>{},onRideCreated=()=>{}}) {
   const [mode,setMode]=useState('Ride');
@@ -84,6 +85,7 @@ export default function RideBookingPage({user={},onNavigate=()=>{},onBack=()=>{}
         </section>
       </div>
       <div className={styles.rightColumn}>
+        <section className={styles.card}><h2>Route map</h2><LiveMap label="Pickup and destination route map" origin={valid(pickup)&&valid(destination)?{lat:pickup.lat,lng:pickup.lng}:undefined} destination={valid(pickup)&&valid(destination)?{lat:destination.lat,lng:destination.lng}:undefined} latitude={valid(pickup)?pickup.lat:undefined} longitude={valid(pickup)?pickup.lng:undefined} query={!valid(pickup)?pickup.label:undefined}/><p className={styles.caption}>Map preview follows the pickup and destination entered above. Device GPS is requested only when you select “Use my current location”.</p></section>
         <section className={styles.card+' '+styles.fareCard}><h2>{mode==='Ride'?'Ride fare estimate':'Delivery fee estimate'}</h2>
           {!estimate&&<p>Enter both locations and calculate an estimate to see the server price.</p>}
           {estimate&&<><h3>{mode==='Ride'?estimate.fare_display:estimate.fee_display}</h3><p>Distance · {(Number(estimate.distance_m||0)/1000).toFixed(2)} km</p><p>Platform commission · ₦{(Number(estimate.commission_kobo||0)/100).toLocaleString('en-NG',{maximumFractionDigits:2})}</p><p>{mode==='Ride'?'Driver':'Delivery agent'} net · ₦{(Number(mode==='Ride'?estimate.driver_net_kobo:estimate.agent_net_kobo||0)/100).toLocaleString('en-NG',{maximumFractionDigits:2})}</p><p>Available wallet balance · {wallet?.balance_display||'Refresh required'}</p></>}
