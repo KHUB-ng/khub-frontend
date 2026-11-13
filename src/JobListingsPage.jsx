@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Heart, ChevronDown, Search } from 'lucide-react';
 import styles from './JobListingsPage.module.css';
 import { listingsApi } from './lib/listings.js';
+import SponsoredAds from './SponsoredAds.jsx';
 
 const nigerianStates = [
   'Abia',
@@ -150,6 +151,7 @@ export default function JobListingsPage({ onViewJob, onBack = () => {}, savedJob
     </label>
       </div>
       <nav className={styles.tabs} aria-label="Job categories">{['All jobs','Accounting & Finance','Administration & Office Support','Agriculture & Agribusiness','Architecture & Interior Design','Banking & Insurance','Construction & Real Estate','Customer Service','Data & Analytics','Design & Creative','Education & Training','Engineering','Energy & Utilities','Government & Public Sector','Healthcare','Hospitality & Tourism','Human Resources','Legal & Compliance','Logistics & Supply Chain','Manufacturing & Production','Marketing & Communications','Media & Communications','NGO & Development','Procurement & Supply','Product & Project Management','Research & Quality Assurance','Retail & E-commerce','Sales & Business Development','Technology & Software','Trades & Skilled Work',`Saved (${saved.length})`].map(item=>{const value=item.startsWith('Saved')?'Saved':item;return <button key={item} className={tab===value?styles.activeTab:''} onClick={()=>setTab(value)}>{item}</button>})}</nav>
+      <SponsoredAds placement="jobs" onSelect={item=>onViewJob?.({id:item.pid,pid:item.pid,title:item.title,company:item.attributes?.company_name||item.attributes?.company||'Employer on KHUB',location:item.location||'Location not specified',arrangement:item.attributes?.work_mode||item.attributes?.arrangement||'Not specified',salary:item.attributes?.salary_display||'Salary not specified',type:item.attributes?.employment_type||item.attributes?.type||'Not specified',level:item.attributes?.experience_level||item.attributes?.experience||'Not specified',closes:item.attributes?.application_deadline||'Not specified',posted:item.created_at||'',category:item.category||'Other',description:item.description||''})}/>
       <div className={styles.content}>
         <aside className={styles.filters}>
           <section className={styles.filterCard}>
