@@ -86,7 +86,7 @@ export default function SellerListingForm({ onNavigate, onSaved }) {
         <div className={styles.layout}>
           <div className={styles.leftCol}>
             {(step === 1 || step === 4) && <section className={styles.card}><h2>Listing details</h2><div className={styles.fields}>
-              <Field label="Listing type" full><select value={form.type} onChange={e => update('type', e.target.value)}><option>Product for sale</option><option>Property for rent</option><option>Equipment for rent</option><option>Service</option></select></Field>
+              <Field label="Listing type" full><select value={form.type} onChange={e => update('type', e.target.value)}><option>Product for sale</option><option>Property for rent</option><option>Equipment for rent</option><option>Service</option><option>Job opportunity</option></select></Field>
               <Field label="Title" value={form.title} onChange={e => update('title', e.target.value)} full required />
               <Field label="Category" full><select value={form.category} onChange={e => update('category', e.target.value)}><option>Furniture & home / Chairs</option><option>Electronics / Audio</option><option>Fashion / Clothing</option><option>Home & living</option><option>Sports & outdoors</option><option>Other</option></select></Field>
               <Field label="Description" full><textarea rows="2" value={form.description} onChange={e => update('description', e.target.value)} required /></Field>
