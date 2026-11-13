@@ -3,7 +3,7 @@ import { ArrowLeft, MapPin, Wallet, Navigation, CheckCircle2 } from 'lucide-reac
 import styles from './RideBookingPage.module.css';
 import { api } from './lib/api.js';
 
-export default function RideBookingPage({user={},onNavigate=()=>{},onBack=()=>{}}) {
+export default function RideBookingPage({user={},onNavigate=()=>{},onBack=()=>{},onRideCreated=()=>{}}) {
   const [mode,setMode]=useState('Ride');
   const [pickup,setPickup]=useState({label:'',lat:'',lng:''});
   const [destination,setDestination]=useState({label:'',lat:'',lng:''});
@@ -57,6 +57,7 @@ export default function RideBookingPage({user={},onNavigate=()=>{},onBack=()=>{}
     try{
       const response=await api.post(mode==='Ride'?'/rides':'/deliveries',requestBody());
       setResult(response);
+      onRideCreated(response);
       setNotice('Your request was accepted by KHUB. The fare has been debited from your wallet into escrow.');
     }catch(err){
       setError(err?.message||'Your request could not be created.');
