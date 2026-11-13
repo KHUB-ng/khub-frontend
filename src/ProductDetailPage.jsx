@@ -13,7 +13,7 @@ export default function ProductDetailPage({ product, products = [], onBack, onOp
       <button className={styles.back} onClick={onBack}><ArrowLeft size={17}/> Back to products</button>
       <div className={styles.crumb}>KHUB / SHOP / PRODUCT DETAILS</div>
       <section className={styles.product}>
-        <div className={styles.gallery}><img src={product.image} alt={product.title || product.name}/></div>
+        <div className={styles.gallery}>{(product.images?.[0] || product.image) ? <img src={product.images?.[0] || product.image} alt={product.title || product.name}/> : <div className={styles.noImage}>No product image uploaded</div>}</div>
         <div className={styles.info}>
           <span className={styles.tag}><ShieldCheck size={14}/> Marketplace listing</span>
           <h1>{product.title || product.name}</h1>
@@ -26,7 +26,7 @@ export default function ProductDetailPage({ product, products = [], onBack, onOp
         </div>
       </section>
       <section className={styles.related}><div className={styles.relatedHead}><div><span className={styles.crumb}>KEEP EXPLORING</span><h2>Related products</h2><p>More items you may like from the marketplace.</p></div></div>
-        <div className={styles.grid}>{suggestions.map(item => <article className={styles.card} key={item.id} onClick={() => onOpenProduct?.(item)}><img src={item.image} alt={item.title || item.name}/><div><h3>{item.title || item.name}</h3><p>{item.category}</p><strong>{money(item.price ?? String(item.priceLabel || '').replace(/[^0-9]/g, ''))}</strong><button onClick={() => onOpenProduct?.(item)}>View product <span>→</span></button></div></article>)}</div>
+        <div className={styles.grid}>{suggestions.map(item => <article className={styles.card} key={item.id} onClick={() => onOpenProduct?.(item)}>{item.images?.[0] || item.image ? <img src={item.images?.[0] || item.image} alt={item.title || item.name}/> : <div className={styles.noImage}>No image uploaded</div>}<div><h3>{item.title || item.name}</h3><p>{item.category}</p><strong>{money(item.price ?? String(item.priceLabel || '').replace(/[^0-9]/g, ''))}</strong><button onClick={() => onOpenProduct?.(item)}>View product <span>→</span></button></div></article>)}</div>
       </section>
     </div>
   </main>;
