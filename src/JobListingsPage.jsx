@@ -1,13 +1,8 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Heart, Check, ChevronDown, Search } from 'lucide-react';
 import styles from './JobListingsPage.module.css';
+import { listingsApi } from './lib/listings.js';
 
-const jobs = [
-  { id:'KH-JB-3107', title:'Product designer', company:'Cedar Digital', location:'Lagos', arrangement:'Hybrid', salaryMin:450000, salaryMax:650000, salary:'₦450,000–₦650,000 / month', type:'Full-time', level:'Mid-level · 3+ years', note:'Health cover · Portfolio required', posted:'10 Oct', closes:'25 Oct 2026', verified:true, category:'Design' },
-  { id:'KH-JB-3112', title:'Operations coordinator', company:'Riverline Commerce', location:'Abuja', arrangement:'On-site', salaryMin:250000, salaryMax:350000, salary:'₦250,000–₦350,000 / month', type:'Full-time', level:'2+ years', note:'Monday–Friday · Transport allowance', posted:'10 Oct', closes:'25 Oct 2026', verified:true, category:'Operations' },
-  { id:'KH-JB-3104', title:'Customer support associate', company:'Delta Connect', location:'Port Harcourt', arrangement:'On-site', salaryMin:180000, salaryMax:240000, salary:'₦180,000–₦240,000 / month', type:'Full-time', level:'Entry level', note:'Shift allowance · Paid training', posted:'10 Oct', closes:'25 Oct 2026', verified:false, category:'Operations' },
-  { id:'KH-JB-3118', title:'Frontend engineer', company:'Cedar Digital', location:'Lagos', arrangement:'Remote', salaryMin:600000, salaryMax:850000, salary:'₦600,000–₦850,000 / month', type:'Contract', level:'6 months · 4+ years', note:'React / TypeScript · Equipment stipend', posted:'10 Oct', closes:'25 Oct 2026', verified:true, category:'Technology' },
-];
 const nigerianStates = [
   'Abia',
   'Adamawa',
@@ -48,6 +43,9 @@ const nigerianStates = [
   'FCT'
 ];
 export default function JobListingsPage({ onViewJob, onBack = () => {}, savedJobs = [], onToggleSave }) {
+  const [jobs, setJobs] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState('');
   const [keyword, setKeyword] = useState('');
   const [location, setLocation] = useState('Nigeria · All cities');
   const [tab, setTab] = useState('All jobs');
@@ -63,6 +61,41 @@ export default function JobListingsPage({ onViewJob, onBack = () => {}, savedJob
   const [sort, setSort] = useState('Newest');
   const [alertMessage, setAlertMessage] = useState('');
   const saved = savedJobs;
+
+  useEffect(() => {
+    let active = true;
+    setLoading(true);
+    const request = keyword.trim()
+      ? listingsApi.search({ q: keyword.trim(), vertical: 'job', page: 1, page_size: 50 })
+      : listingsApi.browse({ vertical: 'job', page: 1, page_size: 50, location: location === 'Nigeria · All cities' ? undefined : location });
+    request.then(payload => {
+      if (!active) return;
+      const rows = Array.isArray(payload) ? payload : (payload?.items || []);
+      setJobs(rows.map(row => {
+        const attrs = row.attributes || {};
+        const minRaw = Number(attrs.salary_min_kobo ?? attrs.salary_min ?? 0);
+        const maxRaw = Number(attrs.salary_max_kobo ?? attrs.salary_max ?? 0);
+        const salaryMin = attrs.salary_min_kobo != null ? minRaw / 100 : minRaw;
+        const salaryMax = attrs.salary_max_kobo != null ? maxRaw / 100 : maxRaw;
+        return {
+          id: row.pid, pid: row.pid, title: row.title,
+          company: attrs.company_name || attrs.company || 'Employer on KHUB',
+          location: row.location || 'Nigeria',
+          arrangement: attrs.work_mode || attrs.arrangement || 'Not specified',
+          salaryMin, salaryMax,
+          salary: attrs.salary_display || (salaryMin || salaryMax ? '₦' + salaryMin.toLocaleString('en-NG') + '–₦' + salaryMax.toLocaleString('en-NG') : 'Salary not specified'),
+          type: attrs.employment_type || attrs.type || 'Not specified',
+          level: attrs.experience_level || attrs.experience || 'Not specified',
+          note: row.description || '', posted: row.created_at || '',
+          closes: attrs.application_deadline || 'See listing', verified: false,
+          category: row.category || 'Other', description: row.description || '',
+        };
+      }));
+      setLoadError('');
+    }).catch(err => { if (active) setLoadError(err?.message || 'Job listings could not be loaded.'); })
+      .finally(() => { if (active) setLoading(false); });
+    return () => { active = false; };
+  }, [keyword, location]);
 
   const visibleJobs = useMemo(() => {
     let result = jobs.filter(job => {
@@ -88,7 +121,7 @@ export default function JobListingsPage({ onViewJob, onBack = () => {}, savedJob
     setAppliedFilters({ fullTime, contract, hybrid, remote, onsite, verifiedOnly, experience, minSalary: parts[0] || 0, maxSalary: parts[1] || 100000000 });
     setAlertMessage('');
   };
-  const createAlert = () => setAlertMessage(`Job alert created for ${keyword.trim() || 'all roles'} in ${location}. This demo keeps the alert in this session.`);
+  const createAlert = () => setAlertMessage('Job alerts are not supported by the current backend API. Your search has not been saved.');
   const clearSalary = () => { setSalary('₦0 – ₦1,000,000'); setAppliedFilters(prev => ({...prev, minSalary:0, maxSalary:1000000})); setAlertMessage('Salary filter cleared.'); };
 
   return <main className={styles.page}>
@@ -135,14 +168,16 @@ export default function JobListingsPage({ onViewJob, onBack = () => {}, savedJob
           <section className={styles.safety}><p>Application safety</p><p>Employers must not ask for fees or bank PINs. Report suspicious requests to KHUB.</p></section>
         </aside>
         <section className={styles.results}>
-          <div className={styles.resultMeta}><span>{visibleJobs.length} curated opportunities</span><span> · </span><label>Sort by <select value={sort} onChange={e=>setSort(e.target.value)}><option>Newest</option><option>Salary: high to low</option><option>Salary: low to high</option></select></label></div>
-          {visibleJobs.map(job=><article className={styles.jobCard} key={job.id}>
+          <div className={styles.resultMeta}><span>{visibleJobs.length} live opportunities</span><span> · </span><label>Sort by <select value={sort} onChange={e=>setSort(e.target.value)}><option>Newest</option><option>Salary: high to low</option><option>Salary: low to high</option></select></label></div>
+          {loading && <section className={styles.empty}>Loading live job listings…</section>}
+          {!loading && loadError && <section className={styles.empty} role="alert">{loadError}</section>}
+          {!loading && !loadError && visibleJobs.map(job=><article className={styles.jobCard} key={job.id}>
             <p className={styles.status}>{job.verified ? <><Check size={12}/> Employer verified</> : '◷ Verification pending'}</p>
             {job.verified && <p className={styles.advertised}>{job.id==='KH-JB-3112'?'Advertised · Employer verified':''}</p>}
             <h2>{job.title}</h2><p>{job.company} · {job.location} / {job.arrangement}</p><h3>{job.salary}</h3><p>{job.type} · {job.level}</p><p>{job.note} · Posted {job.posted} · Closes {job.closes}</p>
             <div className={styles.cardActions}><button className={styles.primary} onClick={()=>onViewJob(job)}>View job</button><button className={styles.linkButton} onClick={()=>onToggleSave?.(job.id)}><Heart size={13} fill={saved.includes(job.id)?'currentColor':'none'}/> {saved.includes(job.id)?'Saved':'Save job'}</button></div>
           </article>)}
-          {visibleJobs.length===0 && <section className={styles.empty}><p>State example · No jobs match these filters</p><p>No jobs match your current search. Your criteria are saved; widen the location or create an alert.</p><button className={styles.linkButton} onClick={clearSalary}>Clear salary filter</button></section>}
+          {!loading && !loadError && visibleJobs.length===0 && <section className={styles.empty}><p>No live jobs match these filters</p><p>No jobs match your current search. Your criteria are saved; widen the location or create an alert.</p><button className={styles.linkButton} onClick={clearSalary}>Clear salary filter</button></section>}
           {alertMessage && <section className={styles.alert}>{alertMessage}</section>}
         </section>
       </div>
