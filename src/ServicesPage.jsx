@@ -46,9 +46,9 @@ export default function ServicesPage({ onHome, onNavigate }) {
         <div className={styles.resultsTop}><p>{providers.length} live service listings</p></div>
         {loading && <div className={styles.empty}>Loading live service listings…</div>}
         {!loading && error && <div className={styles.empty} role="alert">{error}</div>}
-        {!loading && !error && <div className={styles.grid}>{providers.map(provider=><article className={styles.card} key={provider.pid}>
-          <div className={styles.photo}><img src={provider.image} alt={provider.title}/><span>KHUB service listing</span></div>
-          <div className={styles.cardBody}><span className={styles.category}>{provider.category}</span><h2>{provider.title}</h2><p>{provider.location} · {provider.provider}</p><p>{provider.description}</p><strong>{provider.price > 0 ? money(provider.price) : 'Contact provider'}</strong><div className={styles.actions}><button className={styles.primary} onClick={()=>onNavigate?.('messages')}>Message provider</button><button className={styles.secondary} onClick={()=>onNavigate?.('orders-bookings')}>View bookings</button></div></div>
+        {!loading && !error && <div className={styles.providerGrid}>{providers.map(provider=><article className={styles.card} key={provider.pid}>
+          <div className={styles.providerImage}><img src={provider.image} alt={provider.title}/><span>KHUB service listing</span></div>
+          <div className={styles.cardBody}><p className={styles.providerMeta}>{provider.category}</p><h2>{provider.title}</h2><p>{provider.location} · {provider.provider}</p><p>{provider.description}</p><strong>{provider.price > 0 ? money(provider.price) : 'Contact provider'}</strong><div className={styles.providerMeta}><button className={styles.viewLink} onClick={()=>onNavigate?.('messages')}>Message provider</button><button className={styles.viewLink} onClick={()=>onNavigate?.('orders-bookings')}>View bookings</button></div></div>
         </article>)}{providers.length===0&&<div className={styles.empty}>No active service listings match your search.</div>}</div>}
       </section>
     </div>
