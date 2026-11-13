@@ -23,7 +23,12 @@ export default function OrdersBookingsPage({ onBack=()=>{}, onOpenOrder=()=>{}, 
         const [ordersResult, ridesResult, deliveriesResult] = results;
         const rows = [];
         if (ordersResult.status === 'fulfilled') {
-          const orders = Array.isArray(ordersResult.value) ? ordersResult.value : ordersResult.value?.items || [];
+          const orderPayload = ordersResult.value;
+          const orders = Array.isArray(orderPayload)
+            ? orderPayload
+            : Array.isArray(orderPayload?.items)
+              ? orderPayload.items
+              : [...(orderPayload?.bought || []), ...(orderPayload?.sold || [])];
           orders.forEach(order => rows.push({
             id: order.pid, pid: order.pid,
             type: ({ product: 'Shopping', service: 'Services', rental: 'Rentals', job: 'Jobs' })[order.listing_vertical] || 'Orders',
