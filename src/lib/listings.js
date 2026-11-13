@@ -39,6 +39,8 @@ export const listingsApi = {
     data.append('image', file);
     return api.upload(`/listings/${encodeURIComponent(pid)}/images`, data);
   },
+  wishlist() { return api.get('/my/wishlist'); },
+  toggleWishlist(pid) { return api.post(`/wishlist/${encodeURIComponent(pid)}`, {}); },
   deleteImage(pid, imagePid) {
     return api.delete(`/listings/${encodeURIComponent(pid)}/images/${encodeURIComponent(imagePid)}`);
   },
