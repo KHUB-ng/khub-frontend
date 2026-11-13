@@ -23,7 +23,7 @@ export default function ServiceProviderDashboard({user={},onNavigate=()=>{},onLo
     try{
       const [listingRows,orderRows,walletSummary]=await Promise.all([api.get('/my/listings'),api.get('/orders'),api.get('/wallet/')]);
       setListings(rows(listingRows).filter(item=>item.vertical==='service'));
-      setOrders(rows(orderRows).filter(item=>item.seller_pid===user.pid&&item.listing_vertical==='service'));
+      setOrders(rows(orderRows?.sold).filter(item=>item.seller_pid===user.pid&&item.listing_vertical==='service'));
       setWallet(walletSummary);
     }catch(err){setError(err?.message||'Service-provider data could not be loaded.');}
     finally{setLoading(false);}
