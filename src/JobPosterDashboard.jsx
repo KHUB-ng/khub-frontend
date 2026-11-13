@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import styles from './JobPosterDashboard.module.css';
 import { api } from './lib/api.js';
+import AdRequestPanel from './AdRequestPanel.jsx';
 
 const rows=value=>Array.isArray(value)?value:(value?.items||[]);
 const stages=['New','Review','Shortlisted','Hired','Rejected'];
@@ -41,7 +42,8 @@ export default function JobPosterDashboard({user={},onNavigate=()=>{}}) {
   };
   const selectNav=item=>{
     setActive(item);setNotice('');
-    if(item==='Messages')onNavigate('messages');
+    if(item==='Promotions')setNotice('Request sponsored placement review for one of your live job listings below.');
+    else if(item==='Messages')onNavigate('messages');
     else if(item==='Support')onNavigate('support');
     else if(item==='Settings'||item==='Company profile')onNavigate('settings');
     else if(item==='Jobs')setNotice('Your job listings are shown below.');
@@ -61,7 +63,7 @@ export default function JobPosterDashboard({user={},onNavigate=()=>{}}) {
   });
 
   return <div className={styles.shell}>
-    <aside className={styles.sidebar} aria-label="Job poster navigation">{['Overview','Jobs','Applicants','Interviews','Talent shortlist','Company profile','Team access','Billing','Messages','Support','Settings'].map(item=><button key={item} className={active===item?styles.activeNav:styles.navItem} onClick={()=>selectNav(item)}><span>{active===item?'◉':''}</span>{item}</button>)}</aside>
+    <aside className={styles.sidebar} aria-label="Job poster navigation">{['Overview','Jobs','Applicants','Interviews','Talent shortlist','Promotions','Company profile','Team access','Billing','Messages','Support','Settings'].map(item=><button key={item} className={active===item?styles.activeNav:styles.navItem} onClick={()=>selectNav(item)}><span>{active===item?'◉':''}</span>{item}</button>)}</aside>
     <main className={styles.main}>
       <header className={styles.heading}><h1>{active==='Overview'?'Find the people who move you forward.':active}</h1><p>08 Role workspaces / Job-poster dashboard<br/>{user?.company||user?.name||'Employer account'} · Live recruitment workspace</p></header>
       {loading&&<p>Loading job listings and applications…</p>}{error&&<p className={styles.notice} role="alert">{error}</p>}{notice&&<p className={styles.notice} role="status">{notice}</p>}
@@ -88,6 +90,7 @@ export default function JobPosterDashboard({user={},onNavigate=()=>{}}) {
           <section className={styles.card}><h2>Employer profile</h2><p>{user?.company||user?.name||'Employer account'}</p><p>Update business identity and contact information in your account settings.</p><button className={styles.inlineLink} onClick={()=>onNavigate('settings')}>Open settings</button></section>
         </aside>
       </section>
+      {active==='Promotions'&&<AdRequestPanel verticals={['job']} placements={['jobs','home']}/>}
       <button className={styles.inlineLink} onClick={load}>Refresh job listings and applicants</button>
     </main>
   </div>;
