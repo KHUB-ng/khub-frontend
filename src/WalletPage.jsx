@@ -44,12 +44,29 @@ export default function WalletPage({ user = {}, onBack = () => {}, onNavigate = 
   }, []);
 
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    if (params.get('payment_return') === 'flutterwave') {
-      setNotice('Returned from Flutterwave. The backend will show the credited balance after payment verification.');
-      window.history.replaceState({}, document.title, window.location.pathname);
-    }
-    load();
+    let active = true;
+    const verifyReturn = async () => {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('payment_return') === 'flutterwave') {
+        const txRef = params.get('tx_ref');
+        window.history.replaceState({}, document.title, window.location.pathname);
+        if (txRef) {
+          try {
+            const result = await walletApi.fundingStatusByReference(txRef);
+            if (active) setNotice(result.status === 'successful'
+              ? 'Flutterwave payment verified by KHUB. Your wallet balance has been refreshed.'
+              : 'Flutterwave returned to KHUB. The payment is not yet confirmed; your wallet remains unchanged until server-side verification succeeds.');
+          } catch (err) {
+            if (active) setError(err?.message || 'KHUB could not verify the Flutterwave return. Refresh your wallet shortly.');
+          }
+        } else if (active) {
+          setNotice('Returned from Flutterwave without a transaction reference. No payment has been assumed; refresh your wallet after verification.');
+        }
+      }
+      if (active) await load();
+    };
+    verifyReturn();
+    return () => { active = false; };
   }, [load]);
 
   const visible = useMemo(() => entries.filter(item => {
