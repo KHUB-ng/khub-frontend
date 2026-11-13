@@ -615,6 +615,7 @@ function App() {
         page !== 'payment-success' &&
         page !== 'cart' &&
         page !== 'driver-dashboard' &&
+        page !== 'agent-dashboard' &&
         page !== 'provider-dashboard' &&
         page !== 'seller-dashboard' &&
         page !== 'settings' &&
@@ -2004,7 +2005,7 @@ function App() {
                     ['Become a Landlord / Property Owner', 'rentals'],
                     ['List Rental Spaces', 'rentals'],
                     ['Become a Driver', 'driver-dashboard'],
-                    ['Become a Dispatch Rider', 'driver-dashboard'],
+                    ['Become a Dispatch Rider', 'agent-dashboard'],
                     ['Become a Logistics Partner', 'support'],
                     ['Subscription Plans', 'subscription'],
                     ['Referral Programme', 'referrals'],
