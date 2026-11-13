@@ -5,7 +5,7 @@ import { listingsApi } from './lib/listings.js';
 import ProductDetailPage from './ProductDetailPage.jsx';
 import SponsoredAds from './SponsoredAds.jsx';
 
-const topCategories = ['All products', 'Phones & Accessories', 'Computers & Tablets', 'Electronics', 'Fashion & Clothing', 'Footwear', 'Furniture', 'Home & Kitchen', 'Beauty & Personal Care', 'Sports & Fitness', 'Books & Stationery', 'Food & Groceries', 'Automotive'];
+const topCategories = ['All products', 'Phones & Accessories', 'Computers & Tablets', 'Televisions & Home Audio', 'Cameras & Photography', 'Gaming & Consoles', 'Electronics', 'Fashion & Clothing', 'Footwear', 'Bags & Accessories', 'Jewellery & Watches', 'Furniture', 'Home & Kitchen', 'Home Décor & Lighting', 'Bedding & Bath', 'Beauty & Personal Care', 'Health & Wellness', 'Sports & Fitness', 'Outdoor & Garden', 'Baby & Kids', 'Toys & Games', 'Books & Stationery', 'Office Supplies', 'Food & Groceries', 'Automotive & Vehicle Parts', 'Tools & Hardware', 'Industrial Equipment', 'Musical Instruments', 'Art & Collectibles', 'Pet Supplies'];
 const sidebarCategories = topCategories.slice(1);
 const money = value => `₦${Number(value || 0).toLocaleString('en-NG')}`;
 const mapListing = row => {
