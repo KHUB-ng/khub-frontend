@@ -15,8 +15,15 @@ export const authApi = {
       password,
     }, { auth: false });
     const user = normalizeLoginResponse(result);
-    const current = await api.get('/auth/current');
-    return current?.user || current;
+    const profile = await api.get('/user/profile');
+    return profile?.user || profile;
+  },
+
+  async signInWithGoogle(id_token) {
+    const result = await api.post('/auth/google', { id_token }, { auth: false });
+    normalizeLoginResponse(result);
+    const profile = await api.get('/user/profile');
+    return profile?.user || profile;
   },
 
   async register({ name, email, password, referral_code }) {
@@ -65,7 +72,7 @@ export const authApi = {
   async getCurrentUser() {
     const token = sessionTokens.getAccessToken();
     if (!token) return null;
-    const result = await api.get('/auth/current');
+    const result = await api.get('/user/profile');
     return result?.user || result;
   },
 };
