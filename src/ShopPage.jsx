@@ -3,6 +3,7 @@ import { ArrowLeft, ArrowRight, ArrowUpRight, Heart, Search, SlidersHorizontal }
 import styles from './ShopPage.module.css';
 import { listingsApi } from './lib/listings.js';
 import ProductDetailPage from './ProductDetailPage.jsx';
+import SponsoredAds from './SponsoredAds.jsx';
 
 const topCategories = ['All products', 'Phones & Accessories', 'Computers & Tablets', 'Electronics', 'Fashion & Clothing', 'Footwear', 'Furniture', 'Home & Kitchen', 'Beauty & Personal Care', 'Sports & Fitness', 'Books & Stationery', 'Food & Groceries', 'Automotive'];
 const sidebarCategories = topCategories.slice(1);
@@ -97,6 +98,7 @@ export default function ShopPage({ onHome, onRent, onNavigate, onAddToCart }) {
     <div className={styles.eyebrow}>03 / SHOPPING / PRODUCT LISTINGS</div><h1>Thoughtful finds. Local prices.</h1><p className={styles.subtitle}>Browse current product listings published by KHUB sellers.</p>
     <label className={styles.search}><Search size={18} aria-hidden="true" /><input value={query} onChange={e => { setQuery(e.target.value); setPageNumber(1); }} placeholder="Search products" aria-label="Search products" />{query && <button type="button" onClick={() => setQuery('')}>Clear</button>}</label>
     <div className={styles.categories} aria-label="Product categories">{topCategories.map(name => <button key={name} onClick={() => { setCategory(name); setPageNumber(1); }} className={category === name ? styles.selectedCategory : ''} aria-pressed={category === name}>{name}</button>)}</div>
+    <SponsoredAds placement="shop" onSelect={item => openDetails(mapListing(item))}/>
     <div className={styles.shopLayout}>{sidebar}<section className={styles.productArea} aria-label="Shop products">
       <div className={styles.resultsBar}><span>{meta.total_items} products · {sortBy}</span><button className={styles.desktopFilterButton} onClick={() => setShowMobileFilters(true)}><SlidersHorizontal size={15} /> Filter &amp; sort</button><button className={styles.mobileFilterButton} onClick={() => setShowMobileFilters(true)}><SlidersHorizontal size={15} /> Filter &amp; sort</button></div>
       {loading && <div className={styles.empty}>Loading live KHUB listings…</div>}
