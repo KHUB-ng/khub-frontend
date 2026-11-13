@@ -1,11 +1,11 @@
 import { api, sessionTokens } from './api.js';
 
 function normalizeLoginResponse(payload) {
-  if (!payload?.token || !payload?.refresh_token || !payload?.user) {
+  if (!payload?.token || !payload?.refresh_token) {
     throw new Error('The authentication API returned an incomplete session response.');
   }
   sessionTokens.set(payload);
-  return payload.user;
+  return payload.user || { pid: payload.pid, name: payload.name, is_verified: payload.is_verified };
 }
 
 export const authApi = {
@@ -41,7 +41,9 @@ export const authApi = {
 
   async exchangeMagicLink(token) {
     const result = await api.get('/auth/magic-link/' + encodeURIComponent(token), { auth: false });
-    return normalizeLoginResponse(result);
+    normalizeLoginResponse(result);
+    const profile = await api.get('/user/profile');
+    return profile?.user || profile;
   },
 
   async requestPasswordReset(email) {
