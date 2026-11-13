@@ -3,7 +3,7 @@ import { CheckCircle2, RefreshCw, ShieldCheck } from 'lucide-react';
 import styles from './AdminDashboard.module.css';
 import { api } from './lib/api.js';
 
-const sections = ['Operations', 'Listing moderation', 'Sponsored ads', 'Disputes', 'Identity verification', 'Driver & agent review', 'Payout approvals', 'Users & roles', 'Audit log', 'Reports', 'Commission settings'];
+const sections = ['Operations', 'Listing moderation', 'Sponsored ads', 'Disputes', 'Identity verification', 'Driver & agent review', 'Payout approvals', 'Users & roles', 'Audit log', 'Reports', 'Commission settings', 'Platform fees'];
 const modules = ['product', 'service', 'job', 'rental', 'ride', 'delivery'];
 const asArray = value => Array.isArray(value) ? value : (value?.items || []);
 
@@ -13,6 +13,7 @@ export default function AdminDashboard({ onNavigate }) {
   const [rules, setRules] = useState([]);
   const [adStatus, setAdStatus] = useState('pending');
   const [drafts, setDrafts] = useState({});
+  const [feeDrafts, setFeeDrafts] = useState({});
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState('');
   const [error, setError] = useState('');
@@ -38,6 +39,7 @@ export default function AdminDashboard({ onNavigate }) {
         wallets: '/admin/wallets',
         commissionRules: '/admin/commission-rules',
         commissionAccruals: '/admin/commission-accruals',
+        platformFees: '/admin/platform-fees',
       };
       const entries = await Promise.all(Object.entries(endpoints).map(async ([key, path]) => {
         try { return [key, await api.get(path)]; }
@@ -47,6 +49,14 @@ export default function AdminDashboard({ onNavigate }) {
       setData(next);
       const loadedRules = asArray(next.commissionRules);
       setRules(loadedRules);
+      const loadedFees = asArray(next.platformFees);
+      setFeeDrafts(Object.fromEntries(loadedFees.map(fee => [fee.fee_key, {
+        kind: fee.kind,
+        amount: (Number(fee.amount_kobo || 0) / 100).toFixed(2),
+        rate: (Number(fee.rate_bps || 0) / 100).toString(),
+        enabled: Boolean(fee.enabled),
+        label: fee.label,
+      }])));
       setDrafts(Object.fromEntries(loadedRules.map(rule => [rule.module, {
         rate_bps: String(rule.rate_bps ?? 0),
         fixed_fee_kobo: String(rule.fixed_fee_kobo ?? 0),
@@ -85,6 +95,27 @@ export default function AdminDashboard({ onNavigate }) {
     } finally {
       setSaving('');
     }
+  };
+
+
+  const savePlatformFee = async key => {
+    const draft = feeDrafts[key];
+    if (!draft) return;
+    const numeric = Number(draft.kind === 'fixed' ? draft.amount : draft.rate);
+    if (!Number.isFinite(numeric) || numeric < 0 || (draft.kind === 'percentage' && numeric > 100)) {
+      setError('Enter a valid non-negative fee. Percentage rates cannot exceed 100%.');
+      return;
+    }
+    setSaving(key); setError(''); setNotice('');
+    try {
+      const payload = draft.kind === 'fixed'
+        ? { amount_kobo: Math.round(numeric * 100), enabled: draft.enabled }
+        : { rate_bps: Math.round(numeric * 100), enabled: draft.enabled };
+      await api.put('/admin/platform-fees/' + encodeURIComponent(key), payload);
+      setNotice('Platform fee updated. New quotes will use the latest enabled setting where the checkout flow consumes this fee.');
+      await load();
+    } catch (err) { setError(err?.message || 'Platform fee could not be saved.'); }
+    finally { setSaving(''); }
   };
 
   const withdrawalAction = async (pid, decision) => {
@@ -148,6 +179,21 @@ export default function AdminDashboard({ onNavigate }) {
         })}
       </section>}
 
+
+      {!loading && active === 'Platform fees' && <section className={styles.panel}>
+        <h2>Platform-wide fee catalogue</h2>
+        <p>All fixed prices are entered in naira and stored as integer kobo. Percentage rates are entered as percentages. Changes are restricted to the configured superadmin and audit-logged. Disabled fees are not returned by the public fee catalogue.</p>
+        <p><strong>Important:</strong> saving a catalogue value does not automatically activate a charge in a checkout path that has not yet been integrated with the fee service. Do not enable a new charge until its relevant backend transaction flow has been acceptance-tested.</p>
+        {Object.entries(feeDrafts).map(([key, draft]) => <div className={styles.compactItem} key={key}>
+          <h3>{draft.label || key.replaceAll('_',' ')}</h3>
+          {draft.kind === 'fixed'
+            ? <label>Price (NGN)<input type="number" min="0" step="0.01" value={draft.amount} onChange={e=>setFeeDrafts(old=>({...old,[key]:{...draft,amount:e.target.value}}))}/></label>
+            : <label>Rate (%)<input type="number" min="0" max="100" step="0.01" value={draft.rate} onChange={e=>setFeeDrafts(old=>({...old,[key]:{...draft,rate:e.target.value}}))}/></label>}
+          <label><input type="checkbox" checked={draft.enabled} onChange={e=>setFeeDrafts(old=>({...old,[key]:{...draft,enabled:e.target.checked}}))}/> Enable fee for new quotes</label>
+          <button className={styles.primary} disabled={Boolean(saving)} onClick={()=>savePlatformFee(key)}>{saving===key?'Saving…':'Save fee'}</button>
+        </div>)}
+        {Object.keys(feeDrafts).length===0 && <p>No fee catalogue returned. Confirm the backend migration has been applied and your account is the configured superadmin.</p>}
+      </section>}
       {!loading && active === 'Disputes' && listPanel('Open escrow disputes', {items:asArray(data.escrows).filter(row=>row.status==='dispute_open')}, row => { const ref= row.ref_pid; const table=row.ref_table; const route=table==='orders'?'/admin/orders/'+ref+'/resolve':table==='rides'?'/admin/rides/'+ref+'/resolve':table==='deliveries'?'/admin/deliveries/'+ref+'/resolve':null; const key=table==='orders'?'for_seller':table==='rides'?'for_driver':'for_agent'; const winner=table==='orders'?'seller':table==='rides'?'driver':'delivery agent'; const loser=table==='orders'?'buyer':table==='rides'?'passenger':'requester'; return <><strong>{table} dispute · {row.pid}</strong><p>Amount · {row.amount_display} · Buyer/requester · {row.buyer_pid} · Seller/driver/agent · {row.seller_pid}</p><p>Reference · {ref}</p>{route?<div className={styles.actions}><button className={styles.primary} disabled={Boolean(saving)} onClick={()=>performAction(route,'post',{[key]:true},'Dispute resolved in favour of the '+winner+'.')}>Resolve for {winner}</button><button className={styles.link} disabled={Boolean(saving)} onClick={()=>performAction(route,'post',{[key]:false},'Dispute resolved in favour of the '+loser+'.')}>Refund {loser}</button></div>:<p>Unsupported dispute reference type. Escalate to engineering.</p>}</>; })}
       {!loading && active === 'Sponsored ads' && <><section className={styles.panel}><label>Campaign status <select value={adStatus} onChange={event=>setAdStatus(event.target.value)}><option value="pending">Awaiting review</option><option value="approved">Approved / live</option><option value="rejected">Rejected</option><option value="paused">Paused</option></select></label><p>Only approved campaigns attached to active listings are eligible for public placement. Budget values are proposals; this workflow does not charge advertisers.</p></section>{listPanel(`Sponsored placement requests · ${adStatus}`, data.ads, row => <><strong>{row.listing?.title || row.ad_pid}</strong><p>Placement · {row.placement} · Budget submitted · ₦{(Number(row.budget_kobo||0)/100).toLocaleString('en-NG')} · Status · {row.status}</p><p>Listing reference · {row.listing?.pid || 'Source listing unavailable'}</p><div className={styles.actions}>{row.status==='pending'&&<><button className={styles.primary} disabled={Boolean(saving)||!row.listing} onClick={()=>performAction('/admin/ads/'+row.ad_pid+'/approve','post',{},'Sponsored placement approved and now eligible for public display.')}>Approve ad</button><button className={styles.link} disabled={Boolean(saving)} onClick={()=>performAction('/admin/ads/'+row.ad_pid+'/reject','post',{},'Sponsored placement rejected.')}>Reject</button></>}{row.status==='approved'&&<button className={styles.link} disabled={Boolean(saving)} onClick={()=>performAction('/admin/ads/'+row.ad_pid+'/pause','post',{},'Sponsored placement paused.')}>Pause campaign</button>}{row.status==='paused'&&<button className={styles.primary} disabled={Boolean(saving)} onClick={()=>performAction('/admin/ads/'+row.ad_pid+'/resume','post',{},'Sponsored placement resumed.')}>Resume campaign</button>}<button className={styles.link} disabled={Boolean(saving)} onClick={()=>performAction('/admin/ads/'+row.ad_pid,'delete',{},'Sponsored placement deleted.')}>Delete</button></div></>)}</>}
       {!loading && active === 'Listing moderation' && listPanel('All marketplace listings', data.listings, row => <><strong>{row.title}</strong><p>{row.vertical} · {row.category} · {row.status} · {row.location || 'Location not set'}</p><p>Listing ID · {row.pid} · Owner · {row.owner_pid || 'Unknown'}</p>{row.removed_reason&&<p>Removal reason · {row.removed_reason}</p>}<div className={styles.actions}>{row.status==='removed'?<button className={styles.primary} disabled={Boolean(saving)} onClick={()=>performAction('/admin/listings/'+row.pid+'/reactivate','post',{},'Listing reactivated.')}>Reactivate listing</button>:<button className={styles.link} disabled={Boolean(saving)} onClick={()=>performAction('/admin/listings/'+row.pid+'/remove','post',{reason:'Removed after administrator moderation review.'},'Listing removed from public marketplace.')}>Remove listing</button>}</div></>)}
