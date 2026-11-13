@@ -1,10 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import styles from './ServicesPage.module.css';
-import serviceImage from './assets/service.jpg';
 import { listingsApi } from './lib/listings.js';
 
 const money = amount => `₦${Number(amount || 0).toLocaleString('en-NG')}`;
-const mapService = row => ({ ...row, id: row.pid, pid: row.pid, title: row.title, category: row.category || 'Service', provider: 'KHUB service provider', location: row.location || 'Nigeria', price: (row.effective_price_kobo ?? row.price_kobo ?? 0) / 100, image: serviceImage });
+const mapService = row => ({ ...row, id: row.pid, pid: row.pid, title: row.title, category: row.category || 'Service', provider: 'KHUB service provider', location: row.location || 'Nigeria', price: (row.effective_price_kobo ?? row.price_kobo ?? 0) / 100, image: null });
 
 export default function ServicesPage({ onHome, onNavigate }) {
   const [search, setSearch] = useState('');
@@ -47,7 +46,7 @@ export default function ServicesPage({ onHome, onNavigate }) {
         {loading && <div className={styles.empty}>Loading live service listings…</div>}
         {!loading && error && <div className={styles.empty} role="alert">{error}</div>}
         {!loading && !error && <div className={styles.providerGrid}>{providers.map(provider=><article className={styles.card} key={provider.pid}>
-          <img className={styles.providerImage} src={provider.image} alt={provider.title}/>
+          {provider.image ? <img className={styles.providerImage} src={provider.image} alt={provider.title}/> : <div className={styles.providerImageFallback}>No image uploaded</div>}
           <div className={styles.cardBody}><p className={styles.verified}>Live KHUB listing · {provider.category}</p><h2>{provider.title}</h2><p>{provider.location} · {provider.provider}</p><p>{provider.description}</p><p className={styles.price}>{provider.price > 0 ? money(provider.price) : 'Contact provider'}</p><div className={styles.providerMeta}><button className={styles.viewLink} onClick={()=>onNavigate?.('messages')}>Message provider</button><button className={styles.viewLink} onClick={()=>onNavigate?.('orders-bookings')}>View bookings</button></div></div>
         </article>)}{providers.length===0&&<div className={styles.empty}>No active service listings match your search.</div>}</div>}
       </section>
