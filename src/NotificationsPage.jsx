@@ -1,39 +1,64 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import styles from './NotificationsPage.module.css';
+import { api } from './lib/api.js';
 
-const initialItems = [
-  { id: 1, date: 'Today · 11 October 2026', category: 'Orders', unread: true, title: 'Your order is being prepared', detail: 'KH-10482 · Studio Nook has started packing your chair. Expected 13–15 Oct. · 10:58 WAT', action: 'View order' },
-  { id: 2, date: 'Today · 11 October 2026', category: 'Services', unread: true, title: 'Ada is ready for your call', detail: 'KH-SV-2041 · Discovery call Tuesday 13 Oct at 10:00 WAT. · 10:50 WAT', action: 'View booking' },
-  { id: 3, date: 'Today · 11 October 2026', category: 'Jobs', unread: true, title: 'Application received', detail: 'Cedar Digital · Product designer · KH-AP-9012. Review expected within 7 business days. · 11:20 WAT', action: 'View application' },
-  { id: 4, date: 'Yesterday · 10 October 2026', category: 'Wallet', unread: false, title: 'Referral reward available', detail: '₦1,000 credited after Bisi’s order qualified. KH-RF-119. · 16:05 WAT' },
-  { id: 5, date: 'Yesterday · 10 October 2026', category: 'Account', unread: false, title: 'Your account is secure', detail: 'Successful sign-in from Lagos. If this wasn’t you, review active sessions. · 09:14 WAT' },
-  { id: 6, date: 'Earlier · 09 October 2026', category: 'Wallet', unread: false, title: 'Refund is pending', detail: 'KH-RF-221 · ₦10,000 awaiting bank settlement. Pending funds are not available to spend.' },
-];
-const categories = ['All', 'Orders', 'Services', 'Jobs', 'Wallet', 'Account'];
+const categories = ['All','Orders','Services','Jobs','Rides','Delivery','Wallet','Account'];
+const categoryFor = kind => {
+  const value = String(kind || '').toLowerCase();
+  if (value.includes('order')) return 'Orders';
+  if (value.includes('service')) return 'Services';
+  if (value.includes('job') || value.includes('application')) return 'Jobs';
+  if (value.includes('ride')) return 'Rides';
+  if (value.includes('deliver')) return 'Delivery';
+  if (value.includes('wallet') || value.includes('withdraw') || value.includes('payment')) return 'Wallet';
+  return 'Account';
+};
+const day = value => value ? new Date(value).toLocaleDateString('en-NG',{weekday:'long',day:'numeric',month:'long',year:'numeric'}) : 'Earlier';
+
 export default function NotificationsPage({ onBack = () => {}, onNavigate = () => {} }) {
-  const [items, setItems] = useState(initialItems);
-  const [category, setCategory] = useState('All');
-  const [unreadOnly, setUnreadOnly] = useState(false);
-  const [transactionAlerts, setTransactionAlerts] = useState(true);
-  const [promotions, setPromotions] = useState(false);
-  const [saved, setSaved] = useState(false);
-  const unread = items.filter(n => n.unread).length;
-  const visible = useMemo(() => items.filter(n => (category === 'All' || n.category === category) && (!unreadOnly || n.unread)), [items, category, unreadOnly]);
-  const grouped = useMemo(() => visible.reduce((acc, n) => { (acc[n.date] ||= []).push(n); return acc; }, {}), [visible]);
-  const markAll = () => setItems(prev => prev.map(n => ({ ...n, unread: false })));
-  const openItem = (id) => setItems(prev => prev.map(n => n.id === id ? { ...n, unread: false } : n));
+  const [items,setItems]=useState([]);
+  const [category,setCategory]=useState('All');
+  const [unreadOnly,setUnreadOnly]=useState(false);
+  const [unreadCount,setUnreadCount]=useState(0);
+  const [loading,setLoading]=useState(true);
+  const [error,setError]=useState('');
+
+  const load = async () => {
+    setLoading(true);setError('');
+    try {
+      const [rows,count] = await Promise.all([api.get('/notifications?limit=50'),api.get('/notifications/unread_count')]);
+      const list=Array.isArray(rows)?rows:rows?.items||[];
+      setItems(list.map(item=>({...item,category:categoryFor(item.kind),unread:!item.read_at})));
+      setUnreadCount(Number(count?.unread_count||0));
+    } catch(err){setError(err?.message||'Notifications could not be loaded.');}
+    finally{setLoading(false);}
+  };
+  useEffect(()=>{load();},[]);
+
+  const visible=useMemo(()=>items.filter(item=>(category==='All'||item.category===category)&&(!unreadOnly||item.unread)),[items,category,unreadOnly]);
+  const grouped=useMemo(()=>visible.reduce((acc,item)=>{const key=day(item.created_at);(acc[key] ||= []).push(item);return acc;},{}),[visible]);
+  const markAll=async()=>{try{await api.post('/notifications/read_all',{});await load();}catch(err){setError(err?.message||'Could not mark notifications as read.');}};
+  const markRead=async pid=>{try{await api.post('/notifications/'+encodeURIComponent(pid)+'/read',{});setItems(prev=>prev.map(item=>item.pid===pid?{...item,unread:false,read_at:new Date().toISOString()}:item));setUnreadCount(n=>Math.max(0,n-1));}catch(err){setError(err?.message||'Could not mark notification as read.');}};
+  const openItem=async item=>{
+    if(item.unread) await markRead(item.pid);
+    if(item.ref_table==='orders')onNavigate('orders');
+    else if(item.ref_table==='rides')onNavigate('ride-tracking');
+    else if(item.ref_table==='deliveries')onNavigate('delivery-details');
+    else if(item.kind?.includes('chat'))onNavigate('messages');
+    else onNavigate('orders-bookings');
+  };
+
   return <main className={styles.page}>
-    <div style={{ marginBottom: 18 }}><button type="button" onClick={onBack} aria-label="Go back to the previous page" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, border: '1px solid #dce8df', background: '#fff', color: '#176b43', borderRadius: 999, padding: '10px 16px', fontWeight: 700, cursor: 'pointer', boxShadow: '0 2px 8px rgba(20,60,35,.06)' }}><span aria-hidden="true">←</span> Back</button></div>
-    <header className={styles.heading}><h1>The updates that matter.</h1><p>Q9 Personal hub / Notifications</p><span>{unread} unread updates · Ordered by date · Account and task alerts stay separate from promotions.</span></header>
-    <nav className={styles.tabs} aria-label="Notification categories">{categories.map(c => <button key={c} className={category === c ? styles.activeTab : ''} onClick={() => setCategory(c)}>{c}</button>)}</nav>
-    <div className={styles.actions}><button className={styles.link} onClick={markAll}>Mark all as read</button><button className={styles.link} onClick={() => { document.getElementById('notification-controls')?.scrollIntoView({ behavior: 'smooth', block: 'center' }); }}>Manage preferences</button></div>
-    <div className={styles.layout}>
-      <div className={styles.feed}>{Object.keys(grouped).length ? Object.entries(grouped).map(([date, list]) => <section className={styles.card} key={date}><h2>{date}</h2>{list.map(n => <article className={styles.notification} key={n.id}><p className={styles.status}>{n.unread ? <><b>●</b> Unread</> : '✓ Read'} · {n.title}</p><p>{n.detail}</p>{n.action && <button className={styles.link} onClick={() => { openItem(n.id); if (n.category === 'Orders') onNavigate('orders'); }}>{n.action}</button>}</article>)}</section>) : <section className={styles.card}><h2>No notifications here</h2><p>There are no notifications matching this category and filter.</p><button className={styles.link} onClick={() => { setCategory('All'); setUnreadOnly(false); }}>Show all notifications</button></section>}</div>
-      <aside className={styles.sidebar}>
-        <section className={styles.card} id="notification-controls"><h2>Notification controls</h2><p>{unread} unread · Symbols + words</p><label className={styles.check}><input type="checkbox" checked={unreadOnly} onChange={e => setUnreadOnly(e.target.checked)} /> Show unread only · Currently {unreadOnly ? 'on' : 'off'}</label><label className={styles.check}><input type="checkbox" checked={transactionAlerts} onChange={e => setTransactionAlerts(e.target.checked)} /> Transaction and safety alerts</label><label className={styles.check}><input type="checkbox" checked={promotions} onChange={e => setPromotions(e.target.checked)} /> Promotional updates</label><button className={styles.primary} onClick={() => setSaved(true)}>Save category preferences</button>{saved && <p className={styles.success} role="status">Preferences saved in this preview.</p>}</section>
-        <section className={styles.card}><h2>Quiet, not disconnected</h2><p>Account security and essential order updates stay enabled. Optional promotions can be turned off in settings.</p><p>No notification asks for your card PIN, password or OTP. Always check the task reference inside KHUB.</p></section>
-      </aside>
-    </div>
+    <div style={{marginBottom:18}}><button type="button" onClick={onBack} aria-label="Go back" style={{display:'inline-flex',alignItems:'center',gap:8,border:'1px solid #dce8df',background:'#fff',color:'#176b43',borderRadius:999,padding:'10px 16px',fontWeight:700,cursor:'pointer'}}>← Back</button></div>
+    <header className={styles.heading}><h1>The updates that matter.</h1><p>Personal hub / Notifications</p><span>{unreadCount} unread notifications · Live updates from KHUB.</span></header>
+    <nav className={styles.tabs} aria-label="Notification categories">{categories.map(name=><button key={name} className={category===name?styles.activeTab:''} onClick={()=>setCategory(name)}>{name}</button>)}</nav>
+    <div className={styles.actions}><label className={styles.check}><input type="checkbox" checked={unreadOnly} onChange={e=>setUnreadOnly(e.target.checked)}/> Show unread only</label><button className={styles.link} onClick={markAll}>Mark all as read</button><button className={styles.link} onClick={load}>Refresh</button></div>
+    {loading&&<section className={styles.card}>Loading notifications…</section>}
+    {error&&<section className={styles.card} role="alert">{error}</section>}
+    {!loading&&!error&&<div className={styles.layout}><div className={styles.feed}>
+      {Object.entries(grouped).map(([dateLabel,rows])=><section className={styles.card} key={dateLabel}><h2>{dateLabel}</h2>{rows.map(item=><article className={styles.notification} key={item.pid}><p className={styles.status}>{item.unread?'● Unread':'✓ Read'} · {item.category}</p><h3>{item.title}</h3><p>{item.body||''}</p><small>{new Date(item.created_at).toLocaleString('en-NG')}</small><button className={styles.link} onClick={()=>openItem(item)}>Open update</button></article>)}</section>)}
+      {visible.length===0&&<section className={styles.card}><h2>No notifications</h2><p>There are no notifications matching this filter.</p></section>}
+    </div><aside className={styles.sidebar}><section className={styles.card}><h2>Notification controls</h2><p>Essential account, safety and transaction notifications are delivered by the backend.</p><p>Notification category preferences are not yet exposed by the current API.</p><button className={styles.primary} onClick={load}>Refresh notification feed</button></section><section className={styles.card}><h2>Security reminder</h2><p>KHUB never requests your password, card PIN or OTP through a notification or chat message.</p></section></aside></div>}
     <button className={styles.backLink} onClick={onBack}>← Back to dashboard</button>
   </main>;
 }
