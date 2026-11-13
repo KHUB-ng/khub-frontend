@@ -35,7 +35,7 @@ export default function OrdersBookingsPage({ onBack=()=>{}, onOpenOrder=()=>{}, 
             status: order.status, title: order.listing_title, provider: 'KHUB order',
             amount: order.amount_display || money(order.amount_kobo),
             detail: order.quantity + ' item(s) · Commission ' + money(order.commission_kobo),
-            createdAt: order.created_at, date: date(order.created_at), action: 'View order',
+            createdAt: order.created_at, createdAt: order.created_at, date: date(order.created_at), action: 'View order',
           }));
         }
         if (ridesResult.status === 'fulfilled') {
@@ -46,7 +46,7 @@ export default function OrdersBookingsPage({ onBack=()=>{}, onOpenOrder=()=>{}, 
             provider: ride.driver_pid ? 'Assigned driver' : 'Awaiting driver',
             amount: ride.fare_display || money(ride.fare_kobo),
             detail: 'Driver net ' + money(ride.driver_net_kobo) + ' · Platform fee ' + money(ride.commission_kobo),
-            createdAt: ride.created_at, date: date(ride.created_at), action: 'Track ride',
+            createdAt: ride.created_at, createdAt: ride.created_at, date: date(ride.created_at), action: 'Track ride',
           }));
         }
         if (deliveriesResult.status === 'fulfilled') {
@@ -57,7 +57,7 @@ export default function OrdersBookingsPage({ onBack=()=>{}, onOpenOrder=()=>{}, 
             provider: delivery.tracking_code || 'Delivery request',
             amount: delivery.fee_display || money(delivery.fee_kobo),
             detail: 'Agent net ' + money(delivery.agent_net_kobo) + ' · Platform fee ' + money(delivery.commission_kobo),
-            createdAt: delivery.created_at, date: date(delivery.created_at), action: 'Track delivery',
+            createdAt: delivery.created_at, createdAt: delivery.created_at, date: date(delivery.created_at), action: 'Track delivery',
           }));
         }
         setRecords(rows.sort((a,b)=>new Date(b.createdAt)-new Date(a.createdAt)));
