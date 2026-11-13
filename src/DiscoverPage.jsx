@@ -58,7 +58,7 @@ export default function DiscoverPage({ onHome=()=>{}, onAccount=()=>{}, onNaviga
   const toggleSave=pid=>setSaved(old=>old.includes(pid)?old.filter(x=>x!==pid):[...old,pid]);
   const openDetails=async row=>{
     setSelected(row);setDetailLoading(true);
-    try{const payload=await listingsApi.detail(row.pid);if(selected?.pid===row.pid||true)setSelected({...row,...(payload?.listing||payload),images:payload?.images||[]});}
+    try{const payload=await listingsApi.detail(row.pid);setSelected(current=>current?.pid===row.pid?{...current,...(payload?.listing||payload),images:payload?.images||[]}:current);}
     catch(err){setError(err?.message||'Listing details could not be loaded.');}
     finally{setDetailLoading(false);}
   };
