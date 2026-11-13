@@ -46,7 +46,10 @@ export default function DriverDashboard({user={},onNavigate=()=>{},onLogout=()=>
     if(socketRef.current){socketRef.current.close();socketRef.current=null;}
     setOnline(false);setSocketState('offline');
   };
-  useEffect(()=>()=>stopLocation(),[]);
+  useEffect(()=>()=>{
+    if(watchRef.current!==null&&navigator.geolocation)navigator.geolocation.clearWatch(watchRef.current);
+    if(socketRef.current)socketRef.current.close();
+  },[]);
 
   const goOnline=()=>{
     setError('');setNotice('');
