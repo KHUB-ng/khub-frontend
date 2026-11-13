@@ -9,6 +9,8 @@ const label=point=>point?.label||'Location unavailable';
 
 export default function DriverDashboard({user={},onNavigate=()=>{},onLogout=()=>onNavigate('account')}) {
   const [profile,setProfile]=useState(null);
+  const [application,setApplication]=useState({vehicle_type:'car',vehicle_number:'',license_number:''});
+  const [applying,setApplying]=useState(false);
   const [requests,setRequests]=useState([]);
   const [rides,setRides]=useState([]);
   const [earnings,setEarnings]=useState(null);
@@ -35,7 +37,12 @@ export default function DriverDashboard({user={},onNavigate=()=>{},onLogout=()=>
       }else{
         setRequests([]);setRides([]);setEarnings(null);
       }
-    }catch(err){setError(err?.message||'Driver data could not be loaded. Driver approval and KYC may be required.');}
+    }catch(err){
+      if(err?.status===404){
+        setProfile(null);setRequests([]);setRides([]);setEarnings(null);
+        setError('');
+      }else setError(err?.message||'Driver data could not be loaded. Driver approval and KYC may be required.');
+    }
     finally{setLoading(false);}
   },[]);
   useEffect(()=>{load();},[load]);
@@ -73,6 +80,16 @@ export default function DriverDashboard({user={},onNavigate=()=>{},onLogout=()=>
     },err=>setError(err?.message||'Location permission is required to go online.'),{enableHighAccuracy:true,timeout:15000,maximumAge:0});
   };
 
+  const applyAsDriver=async event=>{
+    event.preventDefault();setApplying(true);setError('');setNotice('');
+    try{
+      const result=await api.post('/driver/apply',application);
+      setNotice('Driver application submitted. Status: '+(result.status||'pending')+'. KHUB administrator verification is required before accepting rides.');
+      await load();
+    }catch(err){setError(err?.message||'Driver application could not be submitted. Verify your role, email and KYC status.');}
+    finally{setApplying(false);}
+  };
+
   const transition=async(ride,action)=>{
     setBusy(ride.pid);setError('');setNotice('');
     try{await api.post('/driver/rides/'+encodeURIComponent(ride.pid)+'/'+action,{});setNotice('Ride status updated by KHUB.');await load();}
@@ -91,6 +108,16 @@ export default function DriverDashboard({user={},onNavigate=()=>{},onLogout=()=>
       <button type="button" className={styles.dashboardLogout} onClick={onLogout}><LogOut size={16}/> Log out</button>
       <header className={styles.heading}><h1>Drive with a clear view.</h1><p>08 Role workspaces / Driver dashboard</p><p>{user.name||'Driver account'} · {profile?.vehicle_type||'Vehicle not recorded'} · {profile?.vehicle_number||'Vehicle details unavailable'}</p></header>
       {loading&&<p>Loading driver profile and trips…</p>}{error&&<p className={styles.stateCard} role="alert">{error}</p>}{notice&&<p className={styles.stateCard} role="status">{notice}</p>}
+      {!profile&& !loading && <section className={styles.card}>
+        <h2>Apply to become a KHUB driver</h2>
+        <p>This application is available only to accounts already assigned the Driver role with verified email and KYC.</p>
+        <form onSubmit={applyAsDriver}>
+          <label>Vehicle type<input value={application.vehicle_type} onChange={e=>setApplication(v=>({...v,vehicle_type:e.target.value}))} required/></label>
+          <label>Vehicle registration number<input value={application.vehicle_number} onChange={e=>setApplication(v=>({...v,vehicle_number:e.target.value}))} required/></label>
+          <label>Driver licence number<input value={application.license_number} onChange={e=>setApplication(v=>({...v,license_number:e.target.value}))} required/></label>
+          <button className={styles.primary} type="submit" disabled={applying}>{applying?'Submitting…':'Submit driver application'}</button>
+        </form>
+      </section>}
       <div className={styles.topGrid}>
         <section className={styles.card+' '+styles.availability}><h2>Driver availability</h2><p className={styles.status}><span className={online?styles.dot:styles.dotOff}/> {online?'Online · Location sharing active':'Offline · Not accepting requests'}</p><p>Profile status: {profile?.status||'Not verified'}. Live availability requires your explicit location-sharing permission.</p><div className={styles.actions}>{online?<button className={styles.primary} onClick={stopLocation}>Go offline</button>:<button className={styles.primary} onClick={goOnline} disabled={!profile||profile.status!=='verified'}>Go online and share location</button>}<button className={styles.textLink} onClick={load}>Refresh driver data</button></div><p className={styles.note}>Only share location while actively working. Going offline closes the live driver socket.</p></section>
         <section className={styles.card}><h2>Verified driver earnings</h2><h3>{earnings?.lifetime_display||money(earnings?.lifetime_kobo)}</h3><p>Today · {money(earnings?.today_kobo)}<br/>Last 7 days · {money(earnings?.last_7_days_kobo)}<br/>Settled trips · {earnings?.trips||0}</p><button className={styles.textLink} onClick={()=>onNavigate('wallet')}>Open wallet ledger</button></section>
