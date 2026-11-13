@@ -1,83 +1,137 @@
-import React, { useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import styles from './WalletPage.module.css';
+import { walletApi } from './lib/wallet.js';
 
-const transactions = [
-  { title: 'Wallet top-up', date: '11 Oct', ref: 'KH-TU-778', amount: '+₦50,000', status: '✓ Available', type: 'Money in' },
-  { title: 'Service · Ada Standard', date: '11 Oct', ref: 'KH-SV-2041', amount: '−₦78,750', status: '✓ Paid', type: 'Money out' },
-  { title: 'Referral reward', date: '10 Oct', ref: 'KH-RF-119', amount: '+₦1,000', status: '✓ Available', type: 'Money in' },
-  { title: 'Order refund', date: '09 Oct', ref: 'KH-RF-221', amount: '+₦10,000', status: '◷ Pending', type: 'Pending' },
-  { title: 'Referral reward checks', date: '09 Oct', ref: 'KH-RF-120', amount: '+₦2,000', status: '◷ Pending', type: 'Pending' },
-];
+const money = value => `₦${(Number(value || 0) / 100).toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+const naira = value => `₦${Number(value || 0).toLocaleString('en-NG')}`;
+const dateLabel = value => value ? new Date(value).toLocaleString('en-NG') : '—';
 
 export default function WalletPage({ user = {}, onBack = () => {}, onNavigate = () => {} }) {
   const [filter, setFilter] = useState('All transactions');
-  const [amount, setAmount] = useState('20000');
-  const [notice, setNotice] = useState('');
-  const [withdrawalReview, setWithdrawalReview] = useState(false);
-  const [topUpOpen, setTopUpOpen] = useState(false);
+  const [wallet, setWallet] = useState(null);
+  const [entries, setEntries] = useState([]);
+  const [banks, setBanks] = useState([]);
+  const [withdrawals, setWithdrawals] = useState([]);
+  const [amount, setAmount] = useState('');
+  const [bankCode, setBankCode] = useState('');
+  const [accountNumber, setAccountNumber] = useState('');
   const [topUpAmount, setTopUpAmount] = useState('5000');
-  const [statementReady, setStatementReady] = useState(false);
-  const visibleTransactions = useMemo(() => filter === 'All transactions' ? transactions : transactions.filter((item) => item.type === filter), [filter]);
-  const numericAmount = Number(amount) || 0;
-  const formatNaira = (value) => `₦${value.toLocaleString('en-NG')}`;
+  const [topUpOpen, setTopUpOpen] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [busy, setBusy] = useState(false);
+  const [notice, setNotice] = useState('');
+  const [error, setError] = useState('');
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError('');
+    try {
+      const [summary, ledger, withdrawalRows] = await Promise.all([
+        walletApi.summary(),
+        walletApi.entries(),
+        walletApi.withdrawals(),
+      ]);
+      setWallet(summary);
+      setEntries(Array.isArray(ledger) ? ledger : ledger?.items || []);
+      setWithdrawals(Array.isArray(withdrawalRows) ? withdrawalRows : withdrawalRows?.items || []);
+      try {
+        const bankRows = await walletApi.banks();
+        setBanks(Array.isArray(bankRows) ? bankRows : []);
+      } catch { setBanks([]); }
+    } catch (err) {
+      setError(err?.message || 'Wallet information could not be loaded.');
+    } finally { setLoading(false); }
+  }, []);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('payment_return') === 'flutterwave') {
+      setNotice('Returned from Flutterwave. The backend will show the credited balance after payment verification.');
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+    load();
+  }, [load]);
+
+  const visible = useMemo(() => entries.filter(item => {
+    if (filter === 'All transactions') return true;
+    if (filter === 'Money in') return item.side === 'credit';
+    if (filter === 'Money out') return item.side === 'debit';
+    return false;
+  }), [entries, filter]);
+
+  const fundWallet = async () => {
+    if (!/^\d+(\.\d{1,2})?$/.test(topUpAmount) || Number(topUpAmount) <= 0) {
+      setError('Enter a valid funding amount in naira.');
+      return;
+    }
+    setBusy(true); setError(''); setNotice('');
+    try {
+      const result = await walletApi.fund(topUpAmount);
+      if (!result?.link) throw new Error('Flutterwave did not return a hosted checkout link.');
+      window.location.assign(result.link);
+    } catch (err) { setError(err?.message || 'Wallet funding could not be started.'); setBusy(false); }
+  };
+
+  const requestWithdrawal = async () => {
+    if (!bankCode || !/^\d{10}$/.test(accountNumber)) {
+      setError('Choose a bank and enter a valid 10-digit account number.');
+      return;
+    }
+    if (!/^\d+$/.test(amount) || Number(amount) < 1) {
+      setError('Enter a valid whole-naira withdrawal amount.');
+      return;
+    }
+    setBusy(true); setError(''); setNotice('');
+    try {
+      const result = await walletApi.withdraw({ bank_code: bankCode, account_number: accountNumber, amount });
+      setNotice(`Withdrawal request ${result.reference} was submitted. Status: ${result.status}.`);
+      setAmount(''); setAccountNumber('');
+      await load();
+    } catch (err) { setError(err?.message || 'Withdrawal could not be submitted. KYC verification may be required.'); }
+    finally { setBusy(false); }
+  };
 
   const downloadStatement = () => {
-    const csv = ['Transaction,Date,Reference,Amount,Status', ...transactions.map((t) => `"${t.title}","${t.date}","${t.ref}","${t.amount}","${t.status}"`)].join('\n');
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
+    const rows = [['Date','Type','Side','Amount (kobo)','Balance after (kobo)','Narration'], ...visible.map(item => [
+      item.created_at, item.entry_type, item.side, item.amount_kobo, item.balance_after_kobo, item.narration || ''
+    ])];
+    const csv = rows.map(row => row.map(value => '"' + String(value ?? '').replaceAll('"','""') + '"').join(',')).join('\n');
+    const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8;' }));
     const link = document.createElement('a'); link.href = url; link.download = 'khub-wallet-statement.csv'; link.click(); URL.revokeObjectURL(url);
-    setStatementReady(true);
   };
 
   return <div className={styles.page}>
-    <div style={{ marginBottom: 18 }}><button type="button" onClick={onBack} aria-label="Go back to the previous page" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, border: '1px solid #dce8df', background: '#fff', color: '#176b43', borderRadius: 999, padding: '10px 16px', fontWeight: 700, cursor: 'pointer', boxShadow: '0 2px 8px rgba(20,60,35,.06)' }}><span aria-hidden="true">←</span> Back</button></div>
-    <header className={styles.header}>
-      <h1>Your money, clearly accounted for.</h1>
-      <p>09 Personal hub / Wallet<br/>{user.name || 'Tomi Adeyemi'} · NGN wallet · Balances updated 11 Oct 2026, 11:20 WAT</p>
-    </header>
-
+    <div style={{ marginBottom: 18 }}><button type="button" onClick={onBack} aria-label="Go back to the previous page" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, border: '1px solid #dce8df', background: '#fff', color: '#176b43', borderRadius: 999, padding: '10px 16px', fontWeight: 700, cursor: 'pointer' }}>← Back</button></div>
+    <header className={styles.header}><h1>Your money, clearly accounted for.</h1><p>09 Personal hub / Wallet<br/>{user.name || 'KHUB account'} · NGN wallet · Live backend balance</p></header>
+    {loading && <p>Loading wallet…</p>}
+    {error && <p className={styles.statusMessage} role="alert">{error}</p>}
+    {notice && <p className={styles.statusMessage} role="status">{notice}</p>}
     <div className={styles.balanceGrid}>
-      <section className={`${styles.card} ${styles.available}`}>
-        <h2>Available to use</h2><strong className={styles.balance}>₦86,500</strong>
-        <p>Ready for eligible KHUB payments or withdrawal.</p>
-        <div className={styles.actions}><button className={styles.primary} onClick={() => { setTopUpOpen(true); setNotice(''); }}>Top up</button><button className={styles.link} onClick={() => document.getElementById('withdrawal-details')?.scrollIntoView({ behavior: 'smooth', block: 'center' })}>Withdraw</button></div>
-      </section>
-      <section className={styles.card}>
-        <h2>Pending funds</h2><strong className={styles.pendingAmount}>₦12,000</strong><p>◷ Not available yet</p>
-        <p>Refund KH-RF-221 · ₦10,000 awaiting settlement. Referral rewards · ₦2,000 awaiting qualification checks.</p>
-        <p>Not included in the available balance. You won’t be charged to release pending funds.</p>
-      </section>
+      <section className={`${styles.card} ${styles.available}`}><h2>Available to use</h2><strong className={styles.balance}>{wallet?.balance_display || money(wallet?.balance_kobo)}</strong><p>Spendable KHUB wallet balance from the backend ledger.</p><div className={styles.actions}><button className={styles.primary} onClick={()=>{setTopUpOpen(true);setError('');}}>Fund wallet with Flutterwave</button><button className={styles.link} onClick={()=>document.getElementById('withdrawal-details')?.scrollIntoView({behavior:'smooth',block:'center'})}>Withdraw</button></div></section>
+      <section className={styles.card}><h2>Withdrawal requests</h2><strong className={styles.pendingAmount}>{withdrawals.length}</strong><p>Requests recorded by the backend.</p>{withdrawals.slice(0,3).map(row=><p key={row.pid}>{row.reference} · {row.status} · {money(row.amount_kobo)}</p>)}</section>
     </div>
-
     <div className={styles.lowerGrid}>
       <section className={styles.historyColumn}>
-        <nav className={styles.tabs} aria-label="Transaction filters">{['All transactions', 'Money in', 'Money out', 'Pending'].map((item) => <button key={item} className={filter === item ? styles.activeTab : ''} onClick={() => setFilter(item)}>{item}</button>)}</nav>
-        <section className={`${styles.card} ${styles.history}`}>
-          <h2>Transaction history</h2>
-          {visibleTransactions.map((item) => <article className={styles.transaction} key={item.ref}><p>{item.title}</p><p>Date / reference: {item.date} · {item.ref}　/　Amount: {item.amount}　/　Status: {item.status}</p></article>)}
-          {visibleTransactions.length === 0 && <p>No transactions in this category.</p>}
-          <button className={styles.link} onClick={downloadStatement}>Download statement</button>
-          {statementReady && <p className={styles.statusMessage} role="status">Your wallet statement has been downloaded.</p>}
-          <p>Current balance includes earlier activity not displayed in this five-record view.</p>
+        <nav className={styles.tabs} aria-label="Transaction filters">{['All transactions','Money in','Money out'].map(item=><button key={item} className={filter===item?styles.activeTab:''} onClick={()=>setFilter(item)}>{item}</button>)}</nav>
+        <section className={`${styles.card} ${styles.history}`}><h2>Transaction history</h2>
+          {visible.map(item=><article className={styles.transaction} key={item.id}><p>{item.narration || item.entry_type}</p><p>{dateLabel(item.created_at)} · {item.entry_type} · {item.side} · {money(item.amount_kobo)}</p><small>Balance after: {money(item.balance_after_kobo)}</small></article>)}
+          {!loading && visible.length===0 && <p>No ledger entries were returned for this filter.</p>}
+          <button className={styles.link} onClick={downloadStatement} disabled={!visible.length}>Download statement</button>
         </section>
       </section>
-
       <aside className={styles.sideStack}>
         <section className={`${styles.card} ${styles.withdrawal}`} id="withdrawal-details">
-          <h2>Withdrawal details</h2>
-          <div className={styles.readout}><span>Bank account</span><strong>{user.name || 'Tomi Adeyemi'} · GTBank · •••• 1428</strong></div>
-          <label className={styles.readout} htmlFor="withdrawal-amount"><span>Amount</span><input id="withdrawal-amount" inputMode="numeric" value={amount} onChange={(e) => { setAmount(e.target.value.replace(/[^0-9]/g, '')); setWithdrawalReview(false); }} aria-label="Withdrawal amount in naira"/><small>{numericAmount ? formatNaira(numericAmount) : 'Enter an amount'}</small></label>
-          <p>Illustrative withdrawal fee ₦50 · You receive {formatNaira(Math.max(0, numericAmount - 50))} · Maximum available ₦86,500</p>
-          <button className={styles.primary} onClick={() => { if (numericAmount < 1000) { setNotice('Enter at least ₦1,000 to review a withdrawal.'); setWithdrawalReview(false); } else if (numericAmount > 86500) { setNotice('Your withdrawal cannot exceed the available balance of ₦86,500.'); setWithdrawalReview(false); } else { setNotice(''); setWithdrawalReview(true); } }}>Review withdrawal</button>
-          {withdrawalReview && <div className={styles.confirmation} role="status"><strong>Review your withdrawal</strong><p>Withdraw {formatNaira(numericAmount)} to your GTBank account. Estimated fee: ₦50. You receive {formatNaira(numericAmount - 50)}.</p><button className={styles.primary} onClick={() => { setNotice('Withdrawal request prepared for review. No money has been moved in this demo.'); setWithdrawalReview(false); }}>Confirm request</button></div>}
-          {notice && <p className={styles.statusMessage} role="status">{notice}</p>}
-          <p>Final fees and expected arrival shown before confirmation. Never share your PIN or OTP in chat.</p>
+          <h2>Request a withdrawal</h2>
+          <label className={styles.readout}><span>Bank</span><select value={bankCode} onChange={e=>setBankCode(e.target.value)}><option value="">Select a bank</option>{banks.map(bank=><option key={bank.code} value={bank.code}>{bank.name}</option>)}</select></label>
+          <label className={styles.readout}><span>10-digit account number</span><input inputMode="numeric" maxLength={10} value={accountNumber} onChange={e=>setAccountNumber(e.target.value.replace(/\D/g,''))} placeholder="0123456789"/></label>
+          <label className={styles.readout}><span>Amount (whole naira)</span><input inputMode="numeric" value={amount} onChange={e=>setAmount(e.target.value.replace(/\D/g,''))} placeholder="10000"/><small>{amount ? naira(amount) : 'Enter an amount'}</small></label>
+          <p>Withdrawals require verified KYC. The backend validates the balance, bank account, limits and Flutterwave transfer result.</p>
+          <button className={styles.primary} onClick={requestWithdrawal} disabled={busy}>{busy?'Submitting…':'Submit withdrawal request'}</button>
         </section>
-        <section className={styles.noticeCard}><p>State example · Withdrawal processing</p><p>KH-WD-2281 · ₦20,000 is pending with your bank. No second withdrawal is needed. Expected update within 1 business day; retain this reference.</p><button className={styles.link} onClick={() => setNotice('KH-WD-2281 is pending with your bank. Expected update within 1 business day.')}>Check transfer status</button></section>
+        <section className={styles.noticeCard}><p>Payment security</p><p>Wallet funding redirects to Flutterwave hosted checkout. KHUB credits your wallet only after server-side transaction verification.</p><button className={styles.link} onClick={load}>Refresh balance and ledger</button></section>
       </aside>
     </div>
-
-    {topUpOpen && <div className={styles.modalBackdrop} role="presentation" onMouseDown={(e) => { if (e.target === e.currentTarget) setTopUpOpen(false); }}><section className={styles.modal} role="dialog" aria-modal="true" aria-labelledby="topup-title"><button className={styles.modalClose} onClick={() => setTopUpOpen(false)} aria-label="Close top-up">×</button><h2 id="topup-title">Top up your wallet</h2><p>Choose an amount to add to your KHUB wallet.</p><label>Amount (₦)<input inputMode="numeric" value={topUpAmount} onChange={(e) => setTopUpAmount(e.target.value.replace(/[^0-9]/g, ''))}/></label><p>Payment method: Bank transfer</p><button className={styles.primary} onClick={() => { setNotice(`Top-up of ${formatNaira(Number(topUpAmount) || 0)} is ready for bank transfer. This demo does not initiate payment.`); setTopUpOpen(false); }}>Continue to payment</button><small>Illustrative interface only. No payment will be initiated.</small></section></div>}
+    {topUpOpen && <div className={styles.modalBackdrop} role="presentation" onMouseDown={e=>{if(e.target===e.currentTarget)setTopUpOpen(false);}}><section className={styles.modal} role="dialog" aria-modal="true" aria-labelledby="topup-title"><button className={styles.modalClose} onClick={()=>setTopUpOpen(false)} aria-label="Close top-up">×</button><h2 id="topup-title">Fund your KHUB wallet</h2><p>Enter the amount in naira. Payment will be completed on Flutterwave.</p><label>Amount (₦)<input inputMode="decimal" value={topUpAmount} onChange={e=>setTopUpAmount(e.target.value.replace(/[^0-9.]/g,''))}/></label><button className={styles.primary} disabled={busy} onClick={fundWallet}>{busy?'Opening Flutterwave…':'Continue to Flutterwave'}</button></section></div>}
     <button className={styles.back} onClick={onBack}>Back to dashboard</button>
   </div>;
 }
