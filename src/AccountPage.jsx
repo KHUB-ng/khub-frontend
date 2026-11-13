@@ -22,6 +22,8 @@ export default function AccountPage({ onHome = () => {}, onAccountCreated = () =
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const token = params.get('reset_token') || params.get('token');
+    const referral = params.get('ref');
+    if (referral) setReferralCode(referral);
     if (token) {
       setResetToken(token);
       setView('reset');
