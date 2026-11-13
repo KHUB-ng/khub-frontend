@@ -21,9 +21,9 @@ Never put Flutterwave secret keys, Google client secrets, database credentials, 
 
 ## Deploy to Cloudflare Pages
 
-1. Connect the KHUB frontend repository and select `feat/production-frontend-integration` for preview, or the approved production branch after review.
-2. Set the build command to `npm run build` and the output directory to `dist`.
-3. Use Node.js 22 in the build environment.
+1. In Cloudflare Pages, set the project root directory to `/` (the Vite `package.json` is at the repository root).
+2. Set the build command to `npm ci && npm run build` and the build output directory to `dist`.
+3. Set `NODE_VERSION=22.12.0` in the Pages build environment. `.nvmrc` and `.node-version` also pin this compatible Node release.
 4. Add `VITE_API_BASE_URL` and `VITE_GOOGLE_CLIENT_ID` to the Pages environment settings for each environment.
 5. Configure the matching frontend origin in backend CORS and in the Google OAuth authorised JavaScript origins.
 6. The `public/_redirects` file provides the SPA fallback. `wrangler.toml` declares the Pages output directory.
