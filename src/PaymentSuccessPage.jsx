@@ -17,9 +17,9 @@ export default function PaymentSuccessPage({ onNavigate, payment = {} }) {
         <section className={styles.card}>
           <h2>Order confirmation</h2><div className={styles.checkCircle}><Check size={20}/></div>
           <span className={styles.pill}>{payment.status || 'paid_escrow'}</span>
-          <h3 className={styles.orderNo}>Order reference · {payment.pid || 'Not returned'}</h3>
+          <h3 className={styles.orderNo}>{payment.orders?.length > 1 ? `${payment.orders.length} orders created` : 'Order reference'} · {payment.orders?.length > 1 ? 'See references below' : (payment.pid || 'Not returned')}</h3>
           <p className={styles.lead}>Your wallet payment was accepted by the KHUB order API. Funds remain protected by the escrow workflow until the order is completed.</p>
-          <p>Listing reference · {payment.listing_pid || '—'}<br/>Quantity · {payment.quantity ?? '—'}</p>
+          {payment.orders?.length ? <div className={styles.field}><strong>Created order references</strong>{payment.orders.map(order=><p key={order.pid}>{order.listing_title} · {order.pid} · {money(Number(order.amount_kobo || 0) / 100)}</p>)}</div> : <p>Listing reference · {payment.listing_pid || '—'}<br/>Quantity · {payment.quantity ?? '—'}</p>}
           <h3 className={styles.total}>Total · {amount}</h3>
           <div className={styles.field}><p>Platform commission snapshot · {commission}</p><p>Seller net settlement · {sellerNet}</p></div>
           <button className={styles.primary} onClick={()=>onNavigate('orders')}>View my orders</button>
