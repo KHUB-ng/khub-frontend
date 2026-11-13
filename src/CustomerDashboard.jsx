@@ -23,7 +23,7 @@ export default function CustomerDashboard({user={},onNavigate=()=>{},cartCount=0
     ]).then(results=>{
       if(!activeRequest)return;
       const value=index=>results[index].status==='fulfilled'?results[index].value:null;
-      const orders=rows(value(0)).filter(item=>item.buyer_pid===user.pid);
+      const orders=rows(value(0)?.bought).filter(item=>item.buyer_pid===user.pid);
       const conversations=rows(value(5));
       setData({
         orders,applications:rows(value(1)),rides:rows(value(2)),deliveries:rows(value(3)),wallet:value(4),
