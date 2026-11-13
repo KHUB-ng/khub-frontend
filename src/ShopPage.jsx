@@ -32,6 +32,14 @@ export default function ShopPage({ onHome, onRent, onNavigate, onAddToCart }) {
 
   useEffect(() => {
     let active = true;
+    listingsApi.wishlist().then(rows => {
+      if (active) setSaved((Array.isArray(rows) ? rows : []).map(row => row.pid));
+    }).catch(() => {});
+    return () => { active = false; };
+  }, []);
+
+  useEffect(() => {
+    let active = true;
     setLoading(true);
     const params = {
       vertical: 'product', page: pageNumber, page_size: 24,
@@ -57,7 +65,13 @@ export default function ShopPage({ onHome, onRent, onNavigate, onAddToCart }) {
     return () => { active = false; };
   }, [query, category, filters, sortBy, pageNumber]);
 
-  const toggleSave = id => setSaved(old => old.includes(id) ? old.filter(x => x !== id) : [...old, id]);
+  const toggleSave = async id => {
+    try {
+      const result = await listingsApi.toggleWishlist(id);
+      setSaved(old => result.saved ? (old.includes(id) ? old : [...old, id]) : old.filter(x => x !== id));
+      setError('');
+    } catch (err) { setError(err?.message || 'Sign in to save listings to your KHUB wishlist.'); }
+  };
   const openDetails = async product => {
     setSelected(product);
     try {
