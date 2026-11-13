@@ -181,7 +181,6 @@ function App() {
         const rows = Array.isArray(payload) ? payload : (payload?.items || []);
         const mapped = rows.map((listing) => {
           const vertical = listing.vertical;
-          const image = vertical === 'rental' ? rental : vertical === 'service' ? service : vertical === 'job' ? camera : chair;
           const amountKobo = listing.effective_price_kobo ?? listing.price_kobo ?? 0;
           const kind = vertical === 'rental' ? 'Rent' : vertical === 'service' ? 'Services' : vertical === 'job' ? 'Jobs' : 'Shop';
           return {
@@ -193,7 +192,7 @@ function App() {
             sellerName: 'KHUB member',
             price: listing.price_display || (amountKobo ? `₦${(amountKobo / 100).toLocaleString('en-NG')}` : 'Contact provider'),
             numericPrice: amountKobo / 100,
-            image,
+            image: null,
             kind,
             location: listing.location || 'Nigeria',
             condition: listing.attributes?.condition || 'Listed on KHUB',
@@ -1675,7 +1674,7 @@ function App() {
                     style={{ cursor: 'pointer' }}
                   >
                     <div className={styles.productImage}>
-                      <img src={p.image} alt={p.name} />
+                      {p.image ? <img src={p.image} alt={p.name} /> : <div className={styles.productImageFallback}>No image uploaded</div>}
 
                       <button
                         type="button"
