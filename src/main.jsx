@@ -1364,6 +1364,7 @@ function App() {
         />
       ) : page === 'orders' ? (
         <OrdersPage
+          user={currentUser}
           onBack={() => navigate('orders-bookings')}
           onSupport={() => navigate('support')}
         />
