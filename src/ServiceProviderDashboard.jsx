@@ -1,11 +1,12 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { Circle, CalendarDays, BriefcaseBusiness, Clock3, Wallet, Image, Star, MessageCircle, LifeBuoy, Settings, Menu, X, Bell, LogOut } from 'lucide-react';
+import { Circle, CalendarDays, BriefcaseBusiness, Clock3, Wallet, Image, Star, MessageCircle, LifeBuoy, Settings, Menu, X, Bell, LogOut, Megaphone } from 'lucide-react';
 import styles from './ServiceProviderDashboard.module.css';
 import { api } from './lib/api.js';
+import AdRequestPanel from './AdRequestPanel.jsx';
 
 const rows=value=>Array.isArray(value)?value:(value?.items||[]);
 const money=kobo=>'₦'+(Number(kobo||0)/100).toLocaleString('en-NG',{maximumFractionDigits:2});
-const menuItems=[{label:'Overview',icon:Circle},{label:'Bookings',icon:CalendarDays},{label:'Projects',icon:BriefcaseBusiness},{label:'Availability',icon:Clock3},{label:'Service packages',icon:BriefcaseBusiness},{label:'Portfolio',icon:Image},{label:'Reviews',icon:Star},{label:'Storefront',icon:Image},{label:'Notifications',icon:Bell},{label:'Earnings & payouts',icon:Wallet},{label:'Messages',icon:MessageCircle},{label:'Support',icon:LifeBuoy},{label:'Settings',icon:Settings}];
+const menuItems=[{label:'Overview',icon:Circle},{label:'Bookings',icon:CalendarDays},{label:'Projects',icon:BriefcaseBusiness},{label:'Availability',icon:Clock3},{label:'Service packages',icon:BriefcaseBusiness},{label:'Promotions',icon:Megaphone},{label:'Portfolio',icon:Image},{label:'Reviews',icon:Star},{label:'Storefront',icon:Image},{label:'Notifications',icon:Bell},{label:'Earnings & payouts',icon:Wallet},{label:'Messages',icon:MessageCircle},{label:'Support',icon:LifeBuoy},{label:'Settings',icon:Settings}];
 
 export default function ServiceProviderDashboard({user={},onNavigate=()=>{},onLogout=()=>onNavigate('account')}) {
   const [active,setActive]=useState('Overview');
@@ -70,6 +71,7 @@ export default function ServiceProviderDashboard({user={},onNavigate=()=>{},onLo
           <section className={styles.card+' '+styles.earnings}><h2>Wallet balance</h2><h3>{wallet?.balance_display||money(wallet?.balance_kobo)}</h3><p>Withdrawals require verified KYC and are processed through the existing Flutterwave payout flow.</p><button className={styles.textLink} onClick={()=>onNavigate('wallet')}>View wallet and payouts</button></section>
         </aside>
       </div>
+      {active==='Promotions'&&<AdRequestPanel verticals={['service']} placements={['services','home']}/>}
       <section className={styles.payout}><p>Live backend status<br/>Bookings, earnings and listings shown above come from the KHUB API. Availability calendars and automated time-slot reservations are not represented as active until their APIs are implemented.</p><button className={styles.textLink} onClick={load}>Refresh data</button></section>
     </main>
   </div>;
