@@ -21,7 +21,7 @@ export default function SellerDashboard({ user, onNavigate, onLogout=()=>onNavig
     try{
       const [myListings,allOrders,walletSummary]=await Promise.all([api.get('/my/listings'),api.get('/orders'),api.get('/wallet/')]);
       setListings(rows(myListings));
-      setOrders(rows(allOrders).filter(order=>order.seller_pid===user?.pid));
+      setOrders(rows(allOrders?.sold).filter(order=>order.seller_pid===user?.pid));
       setWallet(walletSummary);
     }catch(err){setError(err?.message||'Seller data could not be loaded.');}
     finally{setLoading(false);}
