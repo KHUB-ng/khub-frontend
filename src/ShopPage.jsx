@@ -9,7 +9,7 @@ const sidebarCategories = ['Furniture & home', 'Electronics', 'Fashion', 'Home &
 const money = value => `₦${Number(value || 0).toLocaleString('en-NG')}`;
 const mapListing = row => {
   const amount = row.effective_price_kobo ?? row.price_kobo ?? 0;
-  return { id: row.pid, pid: row.pid, title: row.title, name: row.title, category: row.category || 'Other', location: row.location || 'Nigeria', city: row.location || 'Nigeria', condition: row.attributes?.condition || 'Listed on KHUB', price: amount / 100, numericPrice: amount / 100, priceKobo: amount, image: null, seller: 'Seller on KHUB', description: row.description, vertical: row.vertical, status: row.status };
+  return { id: row.pid, pid: row.pid, title: row.title, name: row.title, category: row.category || 'Other', location: row.location || 'Nigeria', city: row.location || 'Nigeria', condition: row.attributes?.condition || 'Listed on KHUB', price: amount / 100, numericPrice: amount / 100, priceKobo: amount, image: null, seller: 'Seller on KHUB', description: row.description, vertical: row.vertical, status: row.status, quantity: row.quantity };
 };
 
 export default function ShopPage({ onHome, onRent, onNavigate, onAddToCart }) {
