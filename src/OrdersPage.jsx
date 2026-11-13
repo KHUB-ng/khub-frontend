@@ -20,8 +20,8 @@ export default function OrdersPage({user={},onBack=()=>{},onSupport=()=>{}}) {
   const load=async()=>{
     setLoading(true);setError('');
     try{
-      const data=rows(await api.get('/orders'));
-      const mine=data.filter(order=>order.buyer_pid===user.pid);
+      const payload=await api.get('/orders');
+      const mine=rows(payload?.bought).filter(order=>order.buyer_pid===user.pid);
       setOrders(mine);
       const target=mine.find(order=>order.pid===selectedId)||mine[0]||null;
       setSelectedId(target?.pid||'');
@@ -62,7 +62,7 @@ export default function OrdersPage({user={},onBack=()=>{},onSupport=()=>{}}) {
     {!loading&&selected&&<div className={styles.layout}><div className={styles.mainCol}>
       <section className={styles.card}><h2>Order details</h2><p className={styles.status}>{selected.status}</p><h3>{selected.listing_title}</h3><p>Listing type · {selected.listing_vertical} · Quantity · {selected.quantity}</p><p>Order reference · {selected.pid}</p><p>Created · {date(selected.created_at)}</p><p>Seller reference · {selected.seller_pid}</p></section>
       <section className={styles.card}><h2>Escrow and completion</h2><p>KHUB wallet debit is held in escrow. Seller funds are released only through the backend order-completion workflow.</p>{selected.status==='delivered'&&<button className={styles.primary} disabled={busy} onClick={()=>action('confirm')}>Confirm receipt and release escrow</button>}{['paid_escrow','delivered'].includes(selected.status)&&<button className={styles.textLink} disabled={busy} onClick={()=>action('dispute',{reason:'Order issue reported by buyer'})}>Report an issue / open dispute</button>}{selected.status==='paid_escrow'&&<button className={styles.textLink} disabled={busy} onClick={()=>action('cancel')}>Request cancellation</button>}</section>
-      {selected.status==='completed'&&<section className={styles.card}><h2>Review your order</h2><label>Rating<select value={stars} onChange={e=>setStars(e.target.value)}><option value="5">5 · Excellent</option><option value="4">4 · Good</option><option value="3">3 · Average</option><option value="2">2 · Poor</option><option value="1">1 · Very poor</option></select></label><label>Comment<textarea rows="3" value={comment} onChange={e=>setComment(e.target.value)} placeholder="Optional feedback"/></label><button className={styles.primary} disabled={busy} onClick={()=>action('review',{stars:Number(stars),comment})}>Submit review</button></section>}
+      {selected.status==='completed'&&<section className={styles.card}><h2>Review your order</h2><label>Rating<select value={stars} onChange={e=>setStars(e.target.value)}><option value="5">5 · Excellent</option><option value="4">4 · Good</option><option value="3">3 · Average</option><option value="2">2 · Poor</option><option value="1">1 · Very poor</option></select></label><label>Comment<textarea rows="3" value={comment} onChange={e=>setComment(e.target.value)} placeholder="Optional feedback"/></label><button className={styles.primary} disabled={busy} onClick={()=>action('review',{rating:Number(stars),comment}}>Submit review</button></section>}
     </div><aside className={styles.sideCol}>
       <section className={styles.card}><h2>Cost breakdown</h2><p>Gross amount · {selected.amount_display||money(selected.amount_kobo)}</p><p>Platform commission snapshot · {money(selected.commission_kobo)}</p><p>Seller net on completion · {money(selected.seller_net_kobo)}</p><hr/><h3>Total paid from wallet · {selected.amount_display||money(selected.amount_kobo)}</h3><button className={styles.textLink} onClick={downloadReceipt}>Download order receipt</button></section>
       <section className={styles.card}><h2>Need help?</h2><button className={styles.primary} onClick={onSupport}>Get order support</button></section>
