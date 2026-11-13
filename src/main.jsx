@@ -308,7 +308,7 @@ function App() {
     }
 
     addProductToCart(product, false);
-    navigate('delivery-details');
+    navigate('checkout');
   };
 
   const submitGlobalSearch = (event) => {
@@ -1132,14 +1132,12 @@ function App() {
       ) : page === 'checkout' ? (
         <CheckoutPage
           user={currentUser}
-          deliveryDetails={deliveryDetails}
+          cartItems={cartItems}
           onNavigate={navigate}
-          onBack={() => navigate('delivery-details')}
-          onSuccess={(payment) => {
-            setPaymentDetails({
-              ...payment,
-              total: deliveryDetails.total,
-            });
+          onBack={() => navigate('cart')}
+          onSuccess={(order) => {
+            setPaymentDetails(order);
+            setCartItems([]);
             navigate('payment-success');
           }}
         />
