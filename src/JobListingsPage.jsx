@@ -149,7 +149,7 @@ export default function JobListingsPage({ onViewJob, onBack = () => {}, savedJob
       <ChevronDown size={13}/>
     </label>
       </div>
-      <nav className={styles.tabs} aria-label="Job categories">{['All jobs','Design','Technology','Operations',`Saved (${saved.length})`].map((item,i)=>{const value=i===4?'Saved':item;return <button key={item} className={tab===value?styles.activeTab:''} onClick={()=>setTab(value)}>{item}</button>})}</nav>
+      <nav className={styles.tabs} aria-label="Job categories">{['All jobs','Administration','Accounting & Finance','Architecture & Engineering','Customer Service','Design & Creative','Education','Healthcare','Hospitality & Tourism','Human Resources','Legal','Logistics & Supply Chain','Marketing & Communications','Sales & Business Development','Technology','Trades & Skilled Work',`Saved (${saved.length})`].map(item=>{const value=item.startsWith('Saved')?'Saved':item;return <button key={item} className={tab===value?styles.activeTab:''} onClick={()=>setTab(value)}>{item}</button>})}</nav>
       <div className={styles.content}>
         <aside className={styles.filters}>
           <section className={styles.filterCard}>
