@@ -1,11 +1,37 @@
 import React from 'react';
 import { Check } from 'lucide-react';
 import styles from './CheckoutPage.module.css';
-const money = value => `₦${Number(value).toLocaleString('en-NG')}`;
+
+const money = value => `₦${Number(value || 0).toLocaleString('en-NG')}`;
 export default function PaymentSuccessPage({ onNavigate, payment = {} }) {
+  const amount = payment.amount_display || money(Number(payment.amount_kobo || 0) / 100);
+  const commission = money(Number(payment.commission_kobo || 0) / 100);
+  const sellerNet = money(Number(payment.seller_net_kobo || 0) / 100);
   return <div className={styles.page}>
-    <header className={styles.header}><a href="#top" onClick={e=>{e.preventDefault();onNavigate('home')}} className={styles.logo}>KHUB</a><nav><button onClick={()=>onNavigate('discover')}>Discover</button><button onClick={()=>onNavigate('shop')}>Shop</button><button onClick={()=>onNavigate('rentals')}>Rent</button><button onClick={()=>onNavigate('services')}>Services</button><button onClick={()=>onNavigate('jobs')}>Jobs</button><button onClick={()=>onNavigate('city')}>Rides &amp; delivery</button></nav><button className={styles.list} onClick={()=>onNavigate('account')}>List on KHUB</button></header>
-    <main className={styles.successMain}><div className={styles.eyebrow}>07 / COMMERCE / PAYMENT SUCCESS</div><h1>It’s yours. We’re on it.</h1><p className={styles.subtitle}>Payment confirmed · 11 Oct 2026, 10:42 AM WAT</p><div className={styles.successGrid}><section className={styles.card}><h2>Your order is confirmed</h2><div className={styles.checkCircle}><Check size={20}/></div><span className={styles.pill}>✓ Paid · {money(payment.total || 207000)}</span><h3 className={styles.orderNo}>Order KH-10482</h3><p className={styles.lead}>We’ve sent your receipt to tomi.adeyemi@example.com. Your sellers are getting everything ready.</p><p>The Lekki lounge chair × 1 · ₦145,000<br/>Studio Nook · Forest green</p><p>Wireless headphones × 1 · ₦58,000<br/>Sound House · Cream</p><p>Delivery fee · ₦4,000<br/>Standard · Lekki, Lagos</p><h3 className={styles.total}>Total paid ₦207,000</h3><button className={styles.primary} onClick={()=>onNavigate('orders')}>Track your order</button><button className={styles.outline} onClick={()=>window.print()}>Download receipt</button></section><div className={styles.successSide}><section className={styles.card}><h2>What happens next</h2><p>✓ Payment received<br/>Bank transfer · Payment KH-PY-77120</p><p>○ Sellers prepare your items<br/>You’ll receive an update when dispatched.</p><p>○ Delivery expected 13–15 Oct<br/>12 Admiralty Way, Flat 3B, Lekki Phase 1</p><p className={styles.muted}>You can review delivery updates and contact support in your order detail.</p></section><section className={styles.tip}><strong>Need a hand?</strong><p>Contact KHUB support with your order reference. Payment outcomes, including pending and failed, are documented in the state library.</p></section><button className={styles.outline} onClick={()=>onNavigate('home')}>Explore more on KHUB</button></div></div></main>
-    <footer className={styles.footer}><span>© KHUB · Privacy · Terms · Illustrative marketplace content</span><span><button onClick={()=>onNavigate('support')}>Trust &amp; safety　/　Contact support</button></span></footer>
+    <header className={styles.header}><button className={styles.logo} onClick={()=>onNavigate('home')}>KHUB</button><nav><button onClick={()=>onNavigate('discover')}>Discover</button><button onClick={()=>onNavigate('shop')}>Shop</button><button onClick={()=>onNavigate('rentals')}>Rent</button><button onClick={()=>onNavigate('services')}>Services</button><button onClick={()=>onNavigate('jobs')}>Jobs</button></nav><button className={styles.list} onClick={()=>onNavigate('account')}>Account</button></header>
+    <main className={styles.successMain}>
+      <div className={styles.eyebrow}>07 / COMMERCE / ORDER CONFIRMATION</div>
+      <h1>Your order is placed.</h1>
+      <p className={styles.subtitle}>The backend has accepted the order and moved the buyer funds into KHUB escrow.</p>
+      <div className={styles.successGrid}>
+        <section className={styles.card}>
+          <h2>Order confirmation</h2><div className={styles.checkCircle}><Check size={20}/></div>
+          <span className={styles.pill}>{payment.status || 'paid_escrow'}</span>
+          <h3 className={styles.orderNo}>Order reference · {payment.pid || 'Not returned'}</h3>
+          <p className={styles.lead}>Your wallet payment was accepted by the KHUB order API. Funds remain protected by the escrow workflow until the order is completed.</p>
+          <p>Listing reference · {payment.listing_pid || '—'}<br/>Quantity · {payment.quantity ?? '—'}</p>
+          <h3 className={styles.total}>Total · {amount}</h3>
+          <div className={styles.field}><p>Platform commission snapshot · {commission}</p><p>Seller net settlement · {sellerNet}</p></div>
+          <button className={styles.primary} onClick={()=>onNavigate('orders')}>View my orders</button>
+          <button className={styles.outline} onClick={()=>window.print()}>Print order summary</button>
+        </section>
+        <div className={styles.successSide}>
+          <section className={styles.card}><h2>What happens next</h2><p>1 · The seller prepares the order.</p><p>2 · The seller marks the order as delivered.</p><p>3 · Confirm receipt in KHUB to release escrow according to the order terms.</p><p className={styles.muted}>If there is a problem, use the order dispute workflow before confirming completion.</p></section>
+          <section className={styles.tip}><strong>Payment security</strong><p>KHUB never asks for your card PIN or OTP in chat. Keep the order reference for support requests.</p></section>
+          <button className={styles.outline} onClick={()=>onNavigate('home')}>Explore KHUB</button>
+        </div>
+      </div>
+    </main>
+    <footer className={styles.footer}><span>© KHUB · Privacy · Terms</span><span><button onClick={()=>onNavigate('support')}>Trust &amp; safety / Contact support</button></span></footer>
   </div>;
 }
