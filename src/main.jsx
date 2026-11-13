@@ -74,6 +74,7 @@ import ServicesPage from './ServicesPage.jsx';
 import FooterContentPage, { footerRoutes } from './FooterContentPage.jsx';
 import AboutUsPage from './AboutUsPage.jsx';
 import SponsoredAds from './SponsoredAds.jsx';
+import NewTrendingItems from './NewTrendingItems.jsx';
 
 
 const categories = [
@@ -1643,6 +1644,10 @@ function App() {
                   const amount = item.effective_price_kobo ?? item.price_kobo ?? 0;
                   openProduct({ id: item.pid, pid: item.pid, name: item.title, title: item.title, kind: 'Shop', category: item.category, price: item.price_display || (amount ? `₦${(amount / 100).toLocaleString('en-NG')}` : 'Contact provider'), numericPrice: amount / 100, image: null, location: item.location || 'Nigeria', seller: 'KHUB marketplace seller', description: item.description, features: [], vertical: item.vertical });
                 } else navigate(item.vertical === 'rental' ? 'rentals' : item.vertical === 'service' ? 'services' : item.vertical === 'job' ? 'job-listings' : 'ride-booking');
+              }} />
+              <NewTrendingItems onSelect={item => {
+                const amount = item.effective_price_kobo ?? item.price_kobo ?? 0;
+                openProduct({ id: item.pid, pid: item.pid, name: item.title, title: item.title, kind: 'Shop', category: item.category, price: item.price_display || (amount ? `₦${(amount / 100).toLocaleString('en-NG')}` : 'Contact seller'), numericPrice: amount / 100, image: null, location: item.location || 'Nigeria', seller: 'KHUB marketplace seller', description: item.description, features: [], vertical: item.vertical });
               }} />
               <div className={styles.productGrid}>
                 {filteredProducts.map((p) => (
