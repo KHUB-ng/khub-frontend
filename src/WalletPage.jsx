@@ -6,6 +6,7 @@ import { Eye, EyeOff } from 'lucide-react';
 const money = value => `₦${(Number(value || 0) / 100).toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 const naira = value => `₦${Number(value || 0).toLocaleString('en-NG')}`;
 const dateLabel = value => value ? new Date(value).toLocaleString('en-NG') : '—';
+const privateMoney = (value, visible) => visible ? money(value) : '₦ ••••••••';
 
 export default function WalletPage({ user = {}, onBack = () => {}, onNavigate = () => {} }) {
   const [filter, setFilter] = useState('All transactions');
@@ -134,13 +135,13 @@ export default function WalletPage({ user = {}, onBack = () => {}, onNavigate = 
     {notice && <p className={styles.statusMessage} role="status">{notice}</p>}
     <div className={styles.balanceGrid}>
       <section className={`${styles.card} ${styles.available}`}><h2>Available to use</h2><div className={styles.balanceLine}><strong className={styles.balance} aria-live="polite">{balanceVisible ? (wallet?.balance_display || money(wallet?.balance_kobo)) : '₦ ••••••••'}</strong><button type="button" className={styles.visibilityToggle} onClick={() => setBalanceVisible(value => !value)} aria-label={balanceVisible ? 'Hide wallet balance' : 'Show wallet balance'} aria-pressed={!balanceVisible}>{balanceVisible ? <EyeOff size={19}/> : <Eye size={19}/>}<span>{balanceVisible ? 'Hide balance' : 'Show balance'}</span></button></div><p>Spendable KHUB wallet balance from the backend ledger.</p><div className={styles.actions}><button className={styles.primary} onClick={()=>{setTopUpOpen(true);setError('');}}>Fund wallet with Flutterwave</button><button className={styles.link} onClick={()=>document.getElementById('withdrawal-details')?.scrollIntoView({behavior:'smooth',block:'center'})}>Withdraw</button></div></section>
-      <section className={styles.card}><h2>Withdrawal requests</h2><strong className={styles.pendingAmount}>{withdrawals.length}</strong><p>Requests recorded by the backend.</p>{withdrawals.slice(0,3).map(row=><p key={row.pid}>{row.reference} · {row.status} · {money(row.amount_kobo)}</p>)}</section>
+      <section className={styles.card}><h2>Withdrawal requests</h2><strong className={styles.pendingAmount}>{withdrawals.length}</strong><p>Requests recorded by the backend.</p>{withdrawals.slice(0,3).map(row=><p key={row.pid}>{row.reference} · {row.status} · {privateMoney(row.amount_kobo, balanceVisible)}</p>)}</section>
     </div>
     <div className={styles.lowerGrid}>
       <section className={styles.historyColumn}>
         <nav className={styles.tabs} aria-label="Transaction filters">{['All transactions','Money in','Money out'].map(item=><button key={item} className={filter===item?styles.activeTab:''} onClick={()=>setFilter(item)}>{item}</button>)}</nav>
         <section className={`${styles.card} ${styles.history}`}><h2>Transaction history</h2>
-          {visible.map(item=><article className={styles.transaction} key={item.id}><p>{item.narration || item.entry_type}</p><p>{dateLabel(item.created_at)} · {item.entry_type} · {item.side} · {money(item.amount_kobo)}</p><small>Balance after: {money(item.balance_after_kobo)}</small></article>)}
+          {visible.map(item=><article className={styles.transaction} key={item.id}><p>{item.narration || item.entry_type}</p><p>{dateLabel(item.created_at)} · {item.entry_type} · {item.side} · {privateMoney(item.amount_kobo, balanceVisible)}</p><small>Balance after: {privateMoney(item.balance_after_kobo, balanceVisible)}</small></article>)}
           {!loading && visible.length===0 && <p>No ledger entries were returned for this filter.</p>}
           <button className={styles.link} onClick={downloadStatement} disabled={!visible.length}>Download statement</button>
         </section>
