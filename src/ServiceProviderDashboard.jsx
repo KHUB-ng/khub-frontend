@@ -1,58 +1,76 @@
-import React, { useState } from 'react';
-import { Circle, CalendarDays, BriefcaseBusiness, Clock3, Wallet, Image, Star, MessageCircle, LifeBuoy, Settings, Menu, X, CheckCircle2, Bell, LogOut } from 'lucide-react';
+import React, { useCallback, useEffect, useState } from 'react';
+import { Circle, CalendarDays, BriefcaseBusiness, Clock3, Wallet, Image, Star, MessageCircle, LifeBuoy, Settings, Menu, X, Bell, LogOut } from 'lucide-react';
 import styles from './ServiceProviderDashboard.module.css';
+import { api } from './lib/api.js';
 
-const menuItems = [
-  { label: 'Overview', icon: Circle }, { label: 'Bookings', icon: CalendarDays }, { label: 'Projects', icon: BriefcaseBusiness },
-  { label: 'Availability', icon: Clock3 }, { label: 'Service packages', icon: BriefcaseBusiness }, { label: 'Portfolio', icon: Image },
-  { label: 'Reviews', icon: Star }, { label: 'Storefront', icon: Image }, { label: 'Notifications', icon: Bell }, { label: 'Earnings & payouts', icon: Wallet }, { label: 'Messages', icon: MessageCircle },
-  { label: 'Support', icon: LifeBuoy }, { label: 'Settings', icon: Settings },
-];
+const rows=value=>Array.isArray(value)?value:(value?.items||[]);
+const money=kobo=>'₦'+(Number(kobo||0)/100).toLocaleString('en-NG',{maximumFractionDigits:2});
+const menuItems=[{label:'Overview',icon:Circle},{label:'Bookings',icon:CalendarDays},{label:'Projects',icon:BriefcaseBusiness},{label:'Availability',icon:Clock3},{label:'Service packages',icon:BriefcaseBusiness},{label:'Portfolio',icon:Image},{label:'Reviews',icon:Star},{label:'Storefront',icon:Image},{label:'Notifications',icon:Bell},{label:'Earnings & payouts',icon:Wallet},{label:'Messages',icon:MessageCircle},{label:'Support',icon:LifeBuoy},{label:'Settings',icon:Settings}];
 
-export default function ServiceProviderDashboard({ user = {}, onNavigate = () => {}, onLogout = () => onNavigate('account') }) {
-  const [active, setActive] = useState('Overview');
-  const [mobileNav, setMobileNav] = useState(false);
-  const [accepting, setAccepting] = useState(true);
-  const [day, setDay] = useState('Tue 13');
-  const [blocked, setBlocked] = useState(false);
-  const provider = user.businessName || user.studioName || 'Ada Studio';
-  const selectMenu = (label) => {
-    setActive(label); setMobileNav(false);
-    if (label === 'Settings') onNavigate('settings');
-    if (label === 'Storefront') { onNavigate('storefront'); return; }
-    if (label === 'Messages') { onNavigate('messages'); return; }
-    if (label === 'Support') { onNavigate('support'); return; }
-    if (label === 'Notifications') { onNavigate('notifications'); return; }
-    if (label === 'Earnings & payouts') { onNavigate('wallet'); return; }
-    if (label === 'Bookings' || label === 'Projects') { onNavigate('orders-bookings'); return; }
-    if (label === 'Service packages' || label === 'Portfolio') { onNavigate('seller-listing'); return; }
-    if (label === 'Reviews') setActive('Reviews');
+export default function ServiceProviderDashboard({user={},onNavigate=()=>{},onLogout=()=>onNavigate('account')}) {
+  const [active,setActive]=useState('Overview');
+  const [mobileNav,setMobileNav]=useState(false);
+  const [listings,setListings]=useState([]);
+  const [orders,setOrders]=useState([]);
+  const [wallet,setWallet]=useState(null);
+  const [loading,setLoading]=useState(true);
+  const [error,setError]=useState('');
+  const [notice,setNotice]=useState('');
+  const provider=user.businessName||user.studioName||user.name||'Service provider';
+
+  const load=useCallback(async()=>{
+    setLoading(true);setError('');
+    try{
+      const [listingRows,orderRows,walletSummary]=await Promise.all([api.get('/my/listings'),api.get('/orders'),api.get('/wallet/')]);
+      setListings(rows(listingRows).filter(item=>item.vertical==='service'));
+      setOrders(rows(orderRows).filter(item=>item.seller_pid===user.pid&&item.listing_vertical==='service'));
+      setWallet(walletSummary);
+    }catch(err){setError(err?.message||'Service-provider data could not be loaded.');}
+    finally{setLoading(false);}
+  },[user.pid]);
+  useEffect(()=>{load();},[load]);
+
+  const selectMenu=label=>{
+    setActive(label);setMobileNav(false);setNotice('');
+    if(label==='Settings')onNavigate('settings');
+    else if(label==='Storefront')onNavigate('storefront');
+    else if(label==='Messages')onNavigate('messages');
+    else if(label==='Support')onNavigate('support');
+    else if(label==='Notifications')onNavigate('notifications');
+    else if(label==='Earnings & payouts')onNavigate('wallet');
+    else if(label==='Bookings'||label==='Projects')onNavigate('orders-bookings');
+    else if(label==='Service packages'||label==='Portfolio')onNavigate('seller-listing');
+    else if(label==='Availability')setNotice('Time-slot availability is not yet exposed by the backend. Confirm requested dates and schedules with clients in KHUB messages.');
+    else if(label==='Reviews')setNotice('Open an individual service listing to view its verified review endpoint.');
   };
+  const activeOrders=orders.filter(item=>['paid_escrow','delivered','dispute_open'].includes(item.status));
+  const revenue=orders.filter(item=>item.status==='completed').reduce((sum,item)=>sum+Number(item.seller_net_kobo||0),0);
+  const awaiting=orders.filter(item=>item.status==='paid_escrow').length;
+
   return <div className={styles.shell}>
-    <button className={styles.mobileMenu} onClick={() => setMobileNav(!mobileNav)} aria-label="Toggle service-provider navigation">{mobileNav ? <X size={20}/> : <Menu size={20}/>} Menu</button>
-    <aside className={`${styles.sidebar} ${mobileNav ? styles.sidebarOpen : ''}`} aria-label="Service provider navigation">
-      {menuItems.map(({label, icon: Icon}) => <button key={label} className={`${styles.navItem} ${active === label ? styles.navActive : ''}`} onClick={() => selectMenu(label)}><Icon size={13} strokeWidth={1.8}/><span>{label}</span></button>)}
-    </aside>
+    <button className={styles.mobileMenu} onClick={()=>setMobileNav(!mobileNav)} aria-label="Toggle service-provider navigation">{mobileNav?<X size={20}/>:<Menu size={20}/>} Menu</button>
+    <aside className={styles.sidebar} aria-label="Service provider navigation">{menuItems.map(({label,icon:Icon})=><button key={label} className={styles.navItem+(active===label?' '+styles.navActive:'')} onClick={()=>selectMenu(label)}><Icon size={13} strokeWidth={1.8}/><span>{label}</span></button>)}</aside>
     <main className={styles.main}>
       <button type="button" className={styles.dashboardLogout} onClick={onLogout}><LogOut size={16}/> Log out</button>
-      <header className={styles.heading}><h1>A little structure. More good work.</h1><p>08 Role workspaces / Service-provider dashboard</p><p>{provider} · Identity verified · Service-provider workspace</p></header>
+      <header className={styles.heading}><h1>A little structure. More good work.</h1><p>08 Role workspaces / Service-provider dashboard</p><p>{provider} · Live service workspace</p></header>
+      {loading&&<p>Loading service-provider data…</p>}{error&&<p className={styles.payout} role="alert">{error}</p>}{notice&&<p className={styles.payout} role="status">{notice}</p>}
       <div className={styles.metrics}>
-        <section className={styles.metric}><strong>4</strong><span>Active projects</span><small>2 deliveries this week</small></section>
-        <section className={styles.metric}><strong>3</strong><span>New bookings</span><small>1 brief needs review</small></section>
-        <section className={styles.metric}><strong>₦285,000</strong><span>Earnings · Oct</span><small>Net after platform fees</small></section>
-        <section className={styles.metric}><strong>98%</strong><span>Response rate</span><small>Usually within 2 hours</small></section>
+        <section className={styles.metric}><strong>{activeOrders.length}</strong><span>Active projects</span><small>Service orders in progress</small></section>
+        <section className={styles.metric}><strong>{awaiting}</strong><span>Orders awaiting fulfilment</span><small>Paid into escrow</small></section>
+        <section className={styles.metric}><strong>{money(revenue)}</strong><span>Settled earnings</span><small>Seller net after commission</small></section>
+        <section className={styles.metric}><strong>{listings.length}</strong><span>Service listings</span><small>Published or draft listings</small></section>
       </div>
       <div className={styles.contentGrid}>
         <div className={styles.leftStack}>
-          <section className={styles.card + ' ' + styles.week}><h2>Your week at a glance</h2><div className={styles.days}>{['Mon 12','Tue 13','Wed 14','Thu 15','Fri 16'].map(d=><button key={d} className={day===d?styles.dayActive:styles.day} onClick={()=>setDay(d)}>{d}</button>)}</div><div className={styles.events}>{day==='Tue 13' ? <><div><p>10:00 · ÌRÈ Wellness discovery</p><p>Tomi Adeyemi · KH-SV-2041 · Standard · 30-minute call</p><p><CheckCircle2 size={12}/> Confirmed</p></div><div><p>14:00 · NOOK packaging review</p><p>Femi Bakare · KH-SV-2028 · Launch · Revision 2</p><p><span className={styles.dot}/> In progress</p></div></> : <div><p>{day.split(' ')[0]} · Schedule overview</p><p>No other confirmed appointments are shown for this day.</p></div>}</div><button className={styles.textLink} onClick={()=>setActive('Bookings')}>Manage calendar</button></section>
-          <section className={styles.card + ' ' + styles.milestones}><h2>Project milestones</h2><div><p>ÌRÈ Wellness · Tomi</p><p>Package / value: Standard · ₦75,000 <span>/</span> Next milestone: Brief review · 13 Oct <span>/</span> Action: Review brief</p></div><div><p>NOOK · Femi</p><p>Package / value: Launch · ₦120,000 <span>/</span> Next milestone: Revision 2 · 14 Oct <span>/</span> Action: Upload draft</p></div><div><p>ÒRÍ · Amaka</p><p>Package / value: Essential · ₦45,000 <span>/</span> Next milestone: Handover · 15 Oct <span>/</span> Action: Deliver files</p></div></section>
+          <section className={styles.card+' '+styles.week}><h2>Service listings</h2>{listings.map(item=><div className={styles.events} key={item.pid}><div><p>{item.title}</p><p>{item.category} · {item.location} · {item.status}</p><p>{item.price_display||'Contact provider'}</p></div></div>)}{!loading&&listings.length===0&&<p>You have not published a service listing yet.</p>}<button className={styles.primary} onClick={()=>onNavigate('seller-listing')}>Create service listing</button></section>
+          <section className={styles.card+' '+styles.milestones}><h2>Active service orders</h2>{activeOrders.map(order=><div key={order.pid}><p>{order.listing_title} · {order.pid}</p><p>Status: {order.status} · Gross {order.amount_display} · Commission {money(order.commission_kobo)} · Seller net {money(order.seller_net_kobo)}</p><button className={styles.textLink} onClick={()=>onNavigate('orders-bookings')}>Open order activity</button></div>)}{!loading&&activeOrders.length===0&&<p>No active service orders.</p>}</section>
         </div>
         <aside className={styles.rightStack}>
-          <section className={styles.card + ' ' + styles.availability}><h2>Availability</h2><p><CheckCircle2 size={12}/> {accepting && !blocked ? 'Accepting new bookings' : 'Not accepting new bookings'}</p><div className={styles.infoBox}>Working hours · WAT<br/>Mon–Fri · 09:00–17:00</div><div className={styles.infoBox}>Next available start<br/>13 October 2026</div><p className={styles.pause}><Circle size={12}/> {blocked ? 'Blocked time is active' : 'Pause new bookings · Currently off'}</p><button className={styles.primary} onClick={()=>{setAccepting(!accepting);setActive('Availability')}}>{accepting?'Edit availability':'Accept bookings'}</button><button className={styles.textLink} onClick={()=>{setBlocked(!blocked);setActive('Availability')}}>{blocked?'Remove blocked time':'Block time'}</button></section>
-          <section className={styles.card + ' ' + styles.earnings}><h2>Earnings to settle</h2><h3>₦71,250 pending</h3><p>Standard package ₦75,000 less 5% provider fee ₦3,750. Buyer platform fee is separate. Release follows client acceptance.</p><button className={styles.textLink} onClick={()=>selectMenu('Earnings & payouts')}>View earnings ledger</button></section>
+          <section className={styles.card+' '+styles.availability}><h2>Scheduling</h2><p>KHUB currently uses authenticated chat for clients and providers to agree on service dates, time slots and scope.</p><button className={styles.primary} onClick={()=>onNavigate('messages')}>Open client messages</button></section>
+          <section className={styles.card+' '+styles.earnings}><h2>Wallet balance</h2><h3>{wallet?.balance_display||money(wallet?.balance_kobo)}</h3><p>Withdrawals require verified KYC and are processed through the existing Flutterwave payout flow.</p><button className={styles.textLink} onClick={()=>onNavigate('wallet')}>View wallet and payouts</button></section>
         </aside>
       </div>
-      <section className={styles.payout}><p>State example · Payout pending<br/>Withdrawal KH-WD-2281 is processing with your bank. It is not available to withdraw again. Expected update within 1 business day; use the same reference when contacting support.</p><button className={styles.textLink} onClick={()=>window.alert('Demo payout status: KH-WD-2281 is processing.')}>Check payout status</button></section>
+      <section className={styles.payout}><p>Live backend status<br/>Bookings, earnings and listings shown above come from the KHUB API. Availability calendars and automated time-slot reservations are not represented as active until their APIs are implemented.</p><button className={styles.textLink} onClick={load}>Refresh data</button></section>
     </main>
   </div>;
 }
