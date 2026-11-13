@@ -27,10 +27,14 @@ export default function DriverDashboard({user={},onNavigate=()=>{},onLogout=()=>
   const load=useCallback(async()=>{
     setLoading(true);setError('');
     try{
-      const [me,available,myRides,earningData]=await Promise.all([
-        api.get('/driver/me'),api.get('/driver/requests'),api.get('/driver/rides'),api.get('/driver/earnings')
-      ]);
-      setProfile(me);setRequests(rows(available));setRides(rows(myRides));setEarnings(earningData);
+      const me=await api.get('/driver/me');
+      setProfile(me);
+      if(me.status==='verified'){
+        const [available,myRides,earningData]=await Promise.all([api.get('/driver/requests'),api.get('/driver/rides'),api.get('/driver/earnings')]);
+        setRequests(rows(available));setRides(rows(myRides));setEarnings(earningData);
+      }else{
+        setRequests([]);setRides([]);setEarnings(null);
+      }
     }catch(err){setError(err?.message||'Driver data could not be loaded. Driver approval and KYC may be required.');}
     finally{setLoading(false);}
   },[]);
@@ -85,7 +89,7 @@ export default function DriverDashboard({user={},onNavigate=()=>{},onLogout=()=>
       <header className={styles.heading}><h1>Drive with a clear view.</h1><p>08 Role workspaces / Driver dashboard</p><p>{user.name||'Driver account'} · {profile?.vehicle_type||'Vehicle not recorded'} · {profile?.vehicle_number||'Vehicle details unavailable'}</p></header>
       {loading&&<p>Loading driver profile and trips…</p>}{error&&<p className={styles.stateCard} role="alert">{error}</p>}{notice&&<p className={styles.stateCard} role="status">{notice}</p>}
       <div className={styles.topGrid}>
-        <section className={styles.card+' '+styles.availability}><h2>Driver availability</h2><p className={styles.status}><span className={online?styles.dot:styles.dotOff}/> {online?'Online · Location sharing active':'Offline · Not accepting requests'}</p><p>Profile status: {profile?.status||'Not verified'}. Live availability requires your explicit location-sharing permission.</p><div className={styles.actions}>{online?<button className={styles.primary} onClick={stopLocation}>Go offline</button>:<button className={styles.primary} onClick={goOnline} disabled={!profile||profile.status!=='approved'}>Go online and share location</button>}<button className={styles.textLink} onClick={load}>Refresh driver data</button></div><p className={styles.note}>Only share location while actively working. Going offline closes the live driver socket.</p></section>
+        <section className={styles.card+' '+styles.availability}><h2>Driver availability</h2><p className={styles.status}><span className={online?styles.dot:styles.dotOff}/> {online?'Online · Location sharing active':'Offline · Not accepting requests'}</p><p>Profile status: {profile?.status||'Not verified'}. Live availability requires your explicit location-sharing permission.</p><div className={styles.actions}>{online?<button className={styles.primary} onClick={stopLocation}>Go offline</button>:<button className={styles.primary} onClick={goOnline} disabled={!profile||profile.status!=='verified'}>Go online and share location</button>}<button className={styles.textLink} onClick={load}>Refresh driver data</button></div><p className={styles.note}>Only share location while actively working. Going offline closes the live driver socket.</p></section>
         <section className={styles.card}><h2>Verified driver earnings</h2><h3>{earnings?.lifetime_display||money(earnings?.lifetime_kobo)}</h3><p>Today · {money(earnings?.today_kobo)}<br/>Last 7 days · {money(earnings?.last_7_days_kobo)}<br/>Settled trips · {earnings?.trips||0}</p><button className={styles.textLink} onClick={()=>onNavigate('wallet')}>Open wallet ledger</button></section>
       </div>
       <div className={styles.middleGrid}>
