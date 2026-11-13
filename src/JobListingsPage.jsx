@@ -105,7 +105,6 @@ export default function JobListingsPage({ onViewJob, onBack = () => {}, savedJob
       const filterSet = Object.keys(appliedFilters).length ? appliedFilters : null;
       const matchesType = !filterSet || ((job.type === 'Full-time' && filterSet.fullTime) || (job.type === 'Contract' && filterSet.contract));
       const matchesMode = !filterSet || ((job.arrangement === 'Hybrid' && filterSet.hybrid) || (job.arrangement === 'Remote' && filterSet.remote) || (job.arrangement === 'On-site' && filterSet.onsite));
-      const matchesVerified = !filterSet || !filterSet.verifiedOnly || job.verified;
       const matchesSalary = !filterSet || job.salaryMax >= filterSet.minSalary && job.salaryMin <= filterSet.maxSalary;
       const matchesExperience = !filterSet || filterSet.experience === 'All levels' || (filterSet.experience === 'Entry level' ? job.level.toLowerCase().includes('entry') : filterSet.experience === 'Experienced' ? !job.level.toLowerCase().includes('entry') : true);
       return matchesQuery && matchesTab && matchesLocation && matchesType && matchesMode && matchesSalary && matchesExperience;
