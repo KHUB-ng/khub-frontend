@@ -30,6 +30,14 @@ export default function DiscoverPage({ onHome=()=>{}, onAccount=()=>{}, onNaviga
 
   useEffect(()=>{
     let active=true;
+    listingsApi.wishlist().then(rows=>{
+      if(active)setSaved((Array.isArray(rows)?rows:[]).map(row=>row.pid));
+    }).catch(()=>{});
+    return()=>{active=false;};
+  },[]);
+
+  useEffect(()=>{
+    let active=true;
     setLoading(true);setError('');
     const params={
       vertical:tab==='All'?undefined:tab,
@@ -55,7 +63,13 @@ export default function DiscoverPage({ onHome=()=>{}, onAccount=()=>{}, onNaviga
 
   const applyFilters=()=>{setApplied({category,location,minPrice,maxPrice,sort});setPage(1);};
   const clearFilters=()=>{setSearch('');setTab('All');setCategory('');setLocation('');setMinPrice('');setMaxPrice('');setSort('newest');setApplied({});setPage(1);};
-  const toggleSave=pid=>setSaved(old=>old.includes(pid)?old.filter(x=>x!==pid):[...old,pid]);
+  const toggleSave=async pid=>{
+    try{
+      const result=await listingsApi.toggleWishlist(pid);
+      setSaved(old=>result.saved?(old.includes(pid)?old:[...old,pid]):old.filter(x=>x!==pid));
+      setError('');
+    }catch(err){setError(err?.message||'Sign in to save listings to your KHUB wishlist.');}
+  };
   const openDetails=async row=>{
     setSelected(row);setDetailLoading(true);
     try{const payload=await listingsApi.detail(row.pid);setSelected(current=>current?.pid===row.pid?{...current,...(payload?.listing||payload),images:payload?.images||[]}:current);}
@@ -94,7 +108,7 @@ export default function DiscoverPage({ onHome=()=>{}, onAccount=()=>{}, onNaviga
             <div className={styles.cardBody}><h3>{row.title}</h3><p>{labels[row.vertical]||row.vertical} · {row.category||'General'} · {row.location||'Location not provided'}</p><p>{row.description}</p><strong>{row.price_display||money(row.effective_price_kobo??row.price_kobo)}</strong><div className={styles.cardActions}><button onClick={()=>openDetails(row)}>View details <ArrowUpRight size={14}/></button><button onClick={()=>toggleSave(row.pid)}><Heart size={14} fill={saved.includes(row.pid)?'currentColor':'none'}/>{saved.includes(row.pid)?'Saved':'Save'}</button></div></div>
           </article>)}{rows.length===0&&<div className={styles.empty}>No active KHUB listings match these filters.</div>}</div>}
           {!loading&&!error&&<div className={styles.resultsBottom}><span>Showing {rows.length} of {meta.total_items} live listings</span><div><button disabled={page<=1} onClick={()=>setPage(p=>p-1)}>Previous</button> <button disabled={page>=meta.total_pages} onClick={()=>setPage(p=>p+1)}>Next <ArrowRight size={14}/></button></div></div>}
-          <p className={styles.resultsNote}>Listing availability, pricing and status are controlled by the backend. Saved items on this page are temporary until the wishlist API is connected.</p>
+          <p className={styles.resultsNote}>Listing availability, pricing, status and saved items are managed by the KHUB backend.</p>
         </section>
       </div>
     </main>
