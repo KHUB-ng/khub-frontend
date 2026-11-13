@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { ArrowRight, ArrowLeft, Eye, EyeOff, CheckCircle2, Mail } from 'lucide-react';
 import styles from './AccountPage.module.css';
 import hero from './assets/hero.jpg';
@@ -18,6 +18,8 @@ export default function AccountPage({ onHome = () => {}, onAccountCreated = () =
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
+  const googleButtonRef = useRef(null);
+  const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -50,6 +52,45 @@ export default function AccountPage({ onHome = () => {}, onAccountCreated = () =
         .finally(() => setBusy(false));
     }
   }, []);
+
+
+  useEffect(() => {
+    if (!googleClientId || !googleButtonRef.current) return undefined;
+    let cancelled = false;
+    const renderGoogleButton = () => {
+      if (cancelled || !window.google?.accounts?.id || !googleButtonRef.current) return;
+      window.google.accounts.id.initialize({
+        client_id: googleClientId,
+        callback: async response => {
+          if (!response?.credential || cancelled) return;
+          setBusy(true); setError(''); setMessage('');
+          try {
+            const user = await authApi.signInWithGoogle(response.credential);
+            if (!cancelled) { onAccountCreated(user); setMessage('You are signed in to KHUB with Google.'); }
+          } catch (err) {
+            if (!cancelled) setError(err?.message || 'Google sign-in could not be completed.');
+          } finally { if (!cancelled) setBusy(false); }
+        },
+      });
+      window.google.accounts.id.renderButton(googleButtonRef.current, {
+        type: 'standard', theme: 'outline', size: 'large', shape: 'rectangular',
+        text: view === 'signup' ? 'signup_with' : 'signin_with', width: 320,
+      });
+    };
+    const existing = document.getElementById('khub-google-identity');
+    if (window.google?.accounts?.id) renderGoogleButton();
+    else if (existing) existing.addEventListener('load', renderGoogleButton, { once: true });
+    else {
+      const script = document.createElement('script');
+      script.id = 'khub-google-identity';
+      script.src = 'https://accounts.google.com/gsi/client';
+      script.async = true; script.defer = true;
+      script.onload = renderGoogleButton;
+      script.onerror = () => { if (!cancelled) setError('Google sign-in could not load. Please use email and password.'); };
+      document.head.appendChild(script);
+    }
+    return () => { cancelled = true; };
+  }, [googleClientId, view]);
 
   const switchView = (next) => {
     setError('');
@@ -180,6 +221,7 @@ export default function AccountPage({ onHome = () => {}, onAccountCreated = () =
                     </div>
                   </label>
                   <button className={styles.primary} type="submit" disabled={busy}>{busy ? 'Signing in…' : 'Sign in'}</button>
+                  {googleClientId && <div className={styles.googleSignIn} ref={googleButtonRef} aria-label="Continue with Google" />}
                   <button className={styles.textButton} type="button" onClick={() => switchView('forgot')}>Forgot password?</button>
                   <p className={styles.switchText}>New here? <button type="button" onClick={() => switchView('signup')}>Create an account <ArrowRight size={14} /></button></p>
                 </>
@@ -216,6 +258,7 @@ export default function AccountPage({ onHome = () => {}, onAccountCreated = () =
                     <p>New accounts use the backend's default role. Seller, service provider, job poster, driver and other elevated roles are granted through protected workflows, not a signup dropdown.</p>
                   </div>
                   <button className={styles.primary} type="submit" disabled={busy}>{busy ? 'Creating account…' : 'Create account'}</button>
+                  {googleClientId && <div className={styles.googleSignIn} ref={googleButtonRef} aria-label="Sign up with Google" />}
                   <p className={styles.switchText}>Already registered? <button type="button" onClick={() => switchView('signin')}>Sign in <ArrowRight size={14} /></button></p>
                 </>
               )}
