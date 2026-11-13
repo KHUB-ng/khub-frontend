@@ -115,7 +115,8 @@ function getDashboardForRole(role) {
     case 'provider':
     case 'service_provider': return 'provider-dashboard';
     case 'job poster':
-    case 'job_poster': return 'job-poster-dashboard';
+    case 'job_poster':
+    case 'jobposter': return 'job-poster-dashboard';
     case 'job seeker':
     case 'job_seeker': return 'job-listings';
     case 'admin': return 'admin-dashboard';
@@ -131,6 +132,7 @@ function normalizeApiUser(user) {
     driver: 'Driver',
     service_provider: 'Provider',
     job_poster: 'Job poster',
+    jobposter: 'Job poster',
     admin: 'Admin',
   };
   return { ...user, role_code: user.role, role: roles[String(user.role || '').toLowerCase()] || user.role };
@@ -353,7 +355,7 @@ function App() {
       'seller-dashboard': 'seller',
       'driver-dashboard': 'driver',
       'provider-dashboard': 'service_provider',
-      'job-poster-dashboard': 'job_poster',
+      'job-poster-dashboard': 'jobposter',
     };
     if (roleRoutes[destination] && currentUser?.role_code !== roleRoutes[destination]) {
       notify('This dashboard is not assigned to your current KHUB role.');
