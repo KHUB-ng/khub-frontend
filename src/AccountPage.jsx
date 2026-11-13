@@ -21,13 +21,33 @@ export default function AccountPage({ onHome = () => {}, onAccountCreated = () =
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    const token = params.get('reset_token') || params.get('token');
+    const resetToken = params.get('reset_token') || params.get('token');
+    const verifyToken = params.get('verify_token');
+    const magicToken = params.get('magic_token');
     const referral = params.get('ref');
     if (referral) setReferralCode(referral);
-    if (token) {
-      setResetToken(token);
+    if (resetToken) {
+      setResetToken(resetToken);
       setView('reset');
       window.history.replaceState({}, document.title, window.location.pathname);
+      return;
+    }
+    if (verifyToken) {
+      window.history.replaceState({}, document.title, window.location.pathname);
+      setBusy(true);
+      authApi.verifyEmail(verifyToken)
+        .then(() => { setView('signin'); setMessage('Your email has been verified. You can now sign in.'); })
+        .catch(err => setError(err?.message || 'Email verification failed. Request a new verification email.'))
+        .finally(() => setBusy(false));
+      return;
+    }
+    if (magicToken) {
+      window.history.replaceState({}, document.title, window.location.pathname);
+      setBusy(true);
+      authApi.exchangeMagicLink(magicToken)
+        .then(user => onAccountCreated(user))
+        .catch(err => setError(err?.message || 'This sign-in link is invalid or expired. Request a new one.'))
+        .finally(() => setBusy(false));
     }
   }, []);
 
