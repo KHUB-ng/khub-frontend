@@ -1,30 +1,86 @@
 import React, { useRef, useState } from 'react';
 import { CheckCircle2, Upload, X, Image as ImageIcon } from 'lucide-react';
 import styles from './SellerListingForm.module.css';
+import { listingsApi } from './lib/listings.js';
 
 const initialPhotos = [];
 export default function SellerListingForm({ onNavigate, onSaved }) {
   const [step, setStep] = useState(1);
   const [saved, setSaved] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState('');
+  const [listingPid, setListingPid] = useState('');
   const [photos, setPhotos] = useState(initialPhotos);
-  const [form, setForm] = useState({ type: 'Product for sale', title: 'The Lekki lounge chair', category: 'Furniture & home / Chairs', description: 'Forest green lounge chair with solid walnut legs. Designed and upholstered in Lagos. New, ready for delivery.', condition: 'New', price: '145000', stock: '4', city: 'Lagos / Lekki Phase 1', fulfilment: 'Delivery and pickup', approximate: true, accepted: true });
+  const [form, setForm] = useState({ type: 'Product for sale', title: '', category: '', description: '', condition: 'New', price: '', stock: '1', city: '', fulfilment: 'Delivery and pickup', approximate: true, accepted: false });
   const fileRef = useRef(null);
   const update = (key, value) => setForm(current => ({ ...current, [key]: value }));
   const uploadFiles = files => {
-    const next = Array.from(files || []).filter(file => file.type.startsWith('image/')).map(file => ({ id: `${file.name}-${file.lastModified}-${Math.random()}`, name: file.name, url: URL.createObjectURL(file) }));
-    setPhotos(current => [...current, ...next].slice(0, 8));
+    const next = Array.from(files || [])
+      .filter(file => file.type === 'image/jpeg' || file.type === 'image/png' || file.type === 'image/webp')
+      .map(file => ({ id: `${file.name}-${file.lastModified}-${Math.random()}`, name: file.name, url: URL.createObjectURL(file), file }));
+    setPhotos(current => [...current, ...next].slice(0, 6));
     setSaved(false);
   };
-  const saveDraft = () => { setSaved(true); setSubmitted(false); onSaved?.(form); };
-  const submit = event => { event.preventDefault(); setSubmitted(true); setSaved(false); };
+  const saveDraft = () => {
+    setSaved(true);
+    setNotice('Drafts are not stored by the backend yet. Your information remains only in this open form.');
+  };
+  const submit = async event => {
+    event.preventDefault();
+    if (submitting) return;
+    setSubmitting(true);
+    setError('');
+    setNotice('');
+    setSubmitted(false);
+    try {
+      const vertical = form.type === 'Service' ? 'service'
+        : form.type === 'Job opportunity' ? 'job'
+        : form.type.includes('rent') ? 'rental' : 'product';
+      const payload = {
+        vertical,
+        title: form.title.trim(),
+        description: form.description.trim(),
+        category: form.category.trim(),
+        location: form.city.trim(),
+        price: form.price.trim() || undefined,
+        quantity: vertical === 'product' ? Number(form.stock) : undefined,
+        attributes: {
+          condition: form.condition,
+          fulfilment: form.fulfilment,
+          approximate_location: Boolean(form.approximate),
+        },
+      };
+      if (!form.accepted) throw new Error('Confirm that your listing details are accurate before publishing.');
+      if (!payload.title || !payload.description || !payload.category) throw new Error('Complete the title, category and description.');
+      const listing = await listingsApi.create(payload);
+      const pid = listing.pid;
+      setListingPid(pid);
+      const uploadErrors = [];
+      for (const photo of photos) {
+        try { await listingsApi.uploadImage(pid, photo.file); }
+        catch (uploadError) { uploadErrors.push(uploadError?.message || photo.name); }
+      }
+      setSubmitted(true);
+      setSaved(false);
+      onSaved?.(listing);
+      if (uploadErrors.length) setNotice(`Your listing was created, but ${uploadErrors.length} photo upload(s) failed. Open the listing editor and retry the missing photos.`);
+      else setNotice('Your listing was created successfully and submitted to KHUB.');
+    } catch (err) {
+      setError(err?.message || 'The listing could not be created. Please check the form and try again.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
   const Field = ({ label, value, onChange, children, full = false, ...props }) => <label className={`${styles.field} ${full ? styles.full : ''}`}><span>{label}</span>{children || <input value={value} onChange={onChange} {...props} />}</label>;
   return <div className={styles.page}>
     <main className={styles.main}>
       <div className={styles.eyebrow}>03 / SELLER / PUBLISH &amp; EDIT LISTING</div>
-      <div className={styles.titleRow}><div><h1>Make your listing stand out</h1><p>{submitted ? 'Submitted for review · The listing is not yet visible to buyers.' : saved ? 'Draft saved · The Lekki lounge chair · Just now' : 'Editing draft · The Lekki lounge chair · Saved at 10:42 AM'}</p></div><button className={styles.primary} onClick={saveDraft}>{saved ? 'Draft saved' : 'Save draft'}</button></div>
+      <div className={styles.titleRow}><div><h1>Make your listing stand out</h1><p>{submitted ? 'Submitted for review · The listing is not yet visible to buyers.' : saved ? 'Draft saved · The Lekki lounge chair · Just now' : 'Editing draft · The Lekki lounge chair · Saved at 10:42 AM'}</p></div><button className={styles.primary} onClick={saveDraft}>{saved ? 'Draft not submitted' : 'Save draft locally'}</button></div>
       <div className={styles.steps} aria-label="Listing steps">{['Details','Media','Price & location','Review'].map((name, i) => <button key={name} className={step === i + 1 ? styles.activeStep : ''} onClick={() => setStep(i + 1)}>{i + 1} {name}</button>)}</div>
-      {submitted && <div className={styles.success}><CheckCircle2 size={19}/><div><strong>Listing submitted for review</strong><p>Your listing reference is KH-LS-10482. New listings may enter moderation before buyers can see them.</p><button onClick={() => onNavigate?.('seller-dashboard')}>Go to seller dashboard</button></div></div>}
+      {error && <div className={styles.error} role="alert">{error}</div>}
+      {notice && <div className={styles.hint} role="status">{notice}</div>}
+      {submitted && <div className={styles.success}><CheckCircle2 size={19}/><div><strong>Listing submitted for review</strong><p>Your listing reference is {listingPid}. The backend controls moderation and publication status.</p><button onClick={() => onNavigate?.('seller-dashboard')}>Go to seller dashboard</button></div></div>}
       <form onSubmit={submit}>
         <div className={styles.layout}>
           <div className={styles.leftCol}>
