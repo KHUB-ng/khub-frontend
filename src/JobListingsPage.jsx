@@ -161,7 +161,6 @@ export default function JobListingsPage({ onViewJob, onBack = () => {}, savedJob
             <label className={styles.check}><input type="checkbox" checked={contract} onChange={e=>setContract(e.target.checked)}/> Contract</label>
             <div className={styles.checkGroup}><label className={styles.check}><input type="checkbox" checked={hybrid} onChange={e=>setHybrid(e.target.checked)}/> Hybrid</label><label className={styles.check}><input type="checkbox" checked={remote} onChange={e=>setRemote(e.target.checked)}/> Remote</label><label className={styles.check}><input type="checkbox" checked={onsite} onChange={e=>setOnsite(e.target.checked)}/> On-site</label></div>
             <label className={styles.boxField}><span>Experience</span><select value={experience} onChange={e=>setExperience(e.target.value)}><option>All levels</option><option>Entry level</option><option>Experienced</option></select></label>
-            <label className={styles.check}><input type="checkbox" checked={verifiedOnly} onChange={e=>setVerifiedOnly(e.target.checked)}/> Verified employers only</label>
             <button className={styles.primary} onClick={applyFilters}>Apply filters</button>
             <button className={styles.linkButton} onClick={createAlert}>Create job alert</button>
           </section>
@@ -172,8 +171,7 @@ export default function JobListingsPage({ onViewJob, onBack = () => {}, savedJob
           {loading && <section className={styles.empty}>Loading live job listings…</section>}
           {!loading && loadError && <section className={styles.empty} role="alert">{loadError}</section>}
           {!loading && !loadError && visibleJobs.map(job=><article className={styles.jobCard} key={job.id}>
-            <p className={styles.status}>{job.verified ? <><Check size={12}/> Employer verified</> : '◷ Verification pending'}</p>
-            {job.verified && <p className={styles.advertised}>{job.id==='KH-JB-3112'?'Advertised · Employer verified':''}</p>}
+            <p className={styles.status}>Live KHUB job listing</p>
             <h2>{job.title}</h2><p>{job.company} · {job.location} / {job.arrangement}</p><h3>{job.salary}</h3><p>{job.type} · {job.level}</p><p>{job.note} · Posted {job.posted} · Closes {job.closes}</p>
             <div className={styles.cardActions}><button className={styles.primary} onClick={()=>onViewJob(job)}>View job</button><button className={styles.linkButton} onClick={()=>onToggleSave?.(job.id)}><Heart size={13} fill={saved.includes(job.id)?'currentColor':'none'}/> {saved.includes(job.id)?'Saved':'Save job'}</button></div>
           </article>)}
