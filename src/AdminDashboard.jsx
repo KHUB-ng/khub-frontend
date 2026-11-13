@@ -3,7 +3,7 @@ import { CheckCircle2, RefreshCw, ShieldCheck } from 'lucide-react';
 import styles from './AdminDashboard.module.css';
 import { api } from './lib/api.js';
 
-const sections = ['Operations', 'Identity verification', 'Payout approvals', 'Users & roles', 'Audit log', 'Reports', 'Commission settings'];
+const sections = ['Operations', 'Listing moderation', 'Sponsored ads', 'Identity verification', 'Driver & agent review', 'Payout approvals', 'Users & roles', 'Audit log', 'Reports', 'Commission settings'];
 const modules = ['product', 'service', 'job', 'rental', 'ride', 'delivery'];
 const asArray = value => Array.isArray(value) ? value : (value?.items || []);
 
@@ -24,6 +24,10 @@ export default function AdminDashboard({ onNavigate }) {
       await api.get('/admin/heartbeat');
       const endpoints = {
         withdrawals: '/admin/withdrawals?status=requested',
+        ads: '/admin/ads?status=pending',
+        listings: '/admin/listings',
+        drivers: '/admin/drivers',
+        agents: '/admin/delivery-agents',
         kyc: '/admin/kyc',
         users: '/admin/users',
         audit: '/admin/audit',
@@ -94,6 +98,17 @@ export default function AdminDashboard({ onNavigate }) {
 
 
 
+  const performAction = async (path, method = 'post', body = {}, success = 'Administrator action completed.') => {
+    setSaving(path); setError(''); setNotice('');
+    try {
+      if (method === 'delete') await api.delete(path);
+      else await api.post(path, body);
+      setNotice(success);
+      await load();
+    } catch (err) { setError(err?.message || 'The administrator action failed.'); }
+    finally { setSaving(''); }
+  };
+
   const listPanel = (title, value, renderRow) => {
     const rows = asArray(value);
     if (value?.__error) return <section className={styles.panel}><h2>{title}</h2><p role="alert">{value.__error}</p></section>;
@@ -131,12 +146,15 @@ export default function AdminDashboard({ onNavigate }) {
         })}
       </section>}
 
+      {!loading && active === 'Sponsored ads' && listPanel('Sponsored placement requests awaiting review', data.ads, row => <><strong>{row.listing?.title || row.ad_pid}</strong><p>Placement · {row.placement} · Budget submitted · ₦{(Number(row.budget_kobo||0)/100).toLocaleString('en-NG')} · Status · {row.status}</p><p>Listing reference · {row.listing?.pid || 'Source listing unavailable'}</p><div className={styles.actions}><button className={styles.primary} disabled={Boolean(saving)||!row.listing} onClick={()=>performAction('/admin/ads/'+row.ad_pid+'/approve','post',{},'Sponsored placement approved and now eligible for public display.')}>Approve ad</button><button className={styles.link} disabled={Boolean(saving)} onClick={()=>performAction('/admin/ads/'+row.ad_pid+'/reject','post',{},'Sponsored placement rejected.')}>Reject</button><button className={styles.link} disabled={Boolean(saving)} onClick={()=>performAction('/admin/ads/'+row.ad_pid,'delete',{},'Sponsored placement deleted.')}>Delete</button></div></>)}
+      {!loading && active === 'Listing moderation' && listPanel('All marketplace listings', data.listings, row => <><strong>{row.title}</strong><p>{row.vertical} · {row.category} · {row.status} · {row.location || 'Location not set'}</p><p>Listing ID · {row.pid} · Owner · {row.owner_pid || 'Unknown'}</p>{row.removed_reason&&<p>Removal reason · {row.removed_reason}</p>}<div className={styles.actions}>{row.status==='removed'?<button className={styles.primary} disabled={Boolean(saving)} onClick={()=>performAction('/admin/listings/'+row.pid+'/reactivate','post',{},'Listing reactivated.')}>Reactivate listing</button>:<button className={styles.link} disabled={Boolean(saving)} onClick={()=>performAction('/admin/listings/'+row.pid+'/remove','post',{reason:'Removed after administrator moderation review.'},'Listing removed from public marketplace.')}>Remove listing</button>}</div></>)}
+      {!loading && active === 'Driver & agent review' && <>{listPanel('Driver verification queue',data.drivers,row=><><strong>{row.name||row.pid||row.user_pid}</strong><p>{row.vehicle_type||'Vehicle'} · {row.vehicle_number||''} · {row.status}</p><div className={styles.actions}><button className={styles.primary} disabled={Boolean(saving)} onClick={()=>performAction('/admin/drivers/'+row.pid+'/verify','post',{},'Driver approved.')}>Approve</button><button className={styles.link} disabled={Boolean(saving)} onClick={()=>performAction('/admin/drivers/'+row.pid+'/reject','post',{},'Driver rejected.')}>Reject</button><button className={styles.link} disabled={Boolean(saving)} onClick={()=>performAction('/admin/drivers/'+row.pid+'/suspend','post',{},'Driver suspended.')}>Suspend</button></div></>)}{listPanel('Delivery-agent verification queue',data.agents,row=><><strong>{row.name||row.pid||row.user_pid}</strong><p>{row.vehicle_type||'Vehicle'} · {row.vehicle_number||''} · {row.status}</p><div className={styles.actions}><button className={styles.primary} disabled={Boolean(saving)} onClick={()=>performAction('/admin/delivery-agents/'+row.pid+'/verify','post',{},'Delivery agent approved.')}>Approve</button><button className={styles.link} disabled={Boolean(saving)} onClick={()=>performAction('/admin/delivery-agents/'+row.pid+'/reject','post',{},'Delivery agent rejected.')}>Reject</button><button className={styles.link} disabled={Boolean(saving)} onClick={()=>performAction('/admin/delivery-agents/'+row.pid+'/suspend','post',{},'Delivery agent suspended.')}>Suspend</button></div></>)}</>}
       {!loading && active === 'Payout approvals' && listPanel('Pending withdrawal approvals', data.withdrawals, row => <><strong>{row.pid}</strong><p>Amount: {row.amount_display || row.amount_kobo} · Status: {row.status}</p><div className={styles.actions}><button className={styles.primary} disabled={Boolean(saving)} onClick={() => withdrawalAction(row.pid, 'approve')}>Approve via Flutterwave</button><button className={styles.link} disabled={Boolean(saving)} onClick={() => withdrawalAction(row.pid, 'reject')}>Reject</button></div></>)}
-      {!loading && active === 'Identity verification' && <>{listPanel('KYC metadata queue', data.kyc, row => <><strong>{row.name || row.user_name || row.user_pid}</strong><p>{row.doc_type || row.document_type} · {row.status}</p><p>Document review actions are disabled here until private KYC storage and authorised short-lived document access are in place.</p></>)}<section className={styles.panel}><h2>Security restriction</h2><p>Do not approve identity documents based only on public UUID-based file URLs. KHUB must complete private object storage and audited document access before administrators can review sensitive documents safely.</p></section></>}
-      {!loading && active === 'Users & roles' && listPanel('User directory', data.users)}
+      {!loading && active === 'Identity verification' && listPanel('KYC review queue', data.kyc, row => <><strong>{row.user_name || row.name || row.user_pid}</strong><p>{row.user_email || ''} · {row.doc_type} · {row.status}</p>{row.document_url ? <p><a href={row.document_url} target="_blank" rel="noreferrer">Open protected document preview</a> <small>Signed link expires after five minutes.</small></p> : <p>Protected preview unavailable. Confirm the private KYC bucket is configured and the legacy migration is complete.</p>}<div className={styles.actions}><button className={styles.primary} disabled={Boolean(saving)||!row.document_url} onClick={()=>performAction('/admin/kyc/'+encodeURIComponent(row.user_pid)+'/'+encodeURIComponent(row.doc_type)+'/approve','post',{},'KYC document approved.')}>Approve document</button><button className={styles.link} disabled={Boolean(saving)} onClick={()=>performAction('/admin/kyc/'+encodeURIComponent(row.user_pid)+'/'+encodeURIComponent(row.doc_type)+'/reject','post',{note:'Rejected after administrator review.'},'KYC document rejected.')}>Reject</button></div></>)}
+      {!loading && active === 'Users & roles' && listPanel('User directory', data.users, row => <><strong>{row.name} · {row.email}</strong><p>Role · {row.role} · Email verified · {String(row.email_verified)} · {row.blocked_at?'Blocked':'Active'}</p><label>Change role <select defaultValue={row.role} onChange={e=>performAction('/admin/users/'+row.pid+'/role','post',{role:e.target.value},'User role updated.')}><option value="buyer">Buyer</option><option value="seller">Seller</option><option value="service_provider">Service provider</option><option value="jobposter">Job poster</option><option value="driver">Driver</option><option value="logistics_agent">Logistics agent</option><option value="admin">Admin</option></select></label><div className={styles.actions}>{row.blocked_at?<button className={styles.primary} disabled={Boolean(saving)} onClick={()=>performAction('/admin/users/'+row.pid+'/unblock','post',{},'User account unblocked.')}>Unblock account</button>:<button className={styles.link} disabled={Boolean(saving)} onClick={()=>performAction('/admin/users/'+row.pid+'/block','post',{},'User account blocked.')}>Block account</button>}</div></>)}
       {!loading && active === 'Audit log' && listPanel('Administrative audit events', data.audit)}
       {!loading && active === 'Reports' && <><section className={styles.panel}><h2>Daily platform statistics</h2>{listPanel('Stats', data.stats)}</section>{listPanel('Commission accruals', data.commissionAccruals)}{listPanel('Escrow oversight', data.escrows)}{listPanel('Wallet oversight', data.wallets)}</>}
-      {!loading && active === 'Operations' && <><section className={styles.metrics}><article><strong>{asArray(data.withdrawals).length}</strong><span>Pending withdrawals</span></article><article><strong>{asArray(data.kyc).length}</strong><span>KYC records</span></article><article><strong>{asArray(data.users).length}</strong><span>Users returned</span></article><article><strong>{asArray(data.audit).length}</strong><span>Audit events returned</span></article></section>{listPanel('Latest audit events', data.audit)}</>}
+      {!loading && active === 'Operations' && <><section className={styles.metrics}><article><strong>{asArray(data.withdrawals).length}</strong><span>Pending withdrawals</span></article><article><strong>{asArray(data.kyc).length}</strong><span>KYC records</span></article><article><strong>{asArray(data.users).length}</strong><span>Users returned</span></article><article><strong>{asArray(data.ads).length}</strong><span>Pending ad requests</span></article><article><strong>{asArray(data.audit).length}</strong><span>Audit events returned</span></article></section>{listPanel('Latest audit events', data.audit)}</>}
     </main>
   </div>;
 }
