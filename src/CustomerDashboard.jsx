@@ -1,338 +1,93 @@
-
-import React, { useState } from 'react';
-import {
-  CircleUserRound,
-  PackageCheck,
-  CalendarDays,
-  BriefcaseBusiness,
-  Wallet,
-  MessageCircle,
-  Gift,
-  LifeBuoy,
-  Settings,
-  Bell,
-  LayoutDashboard,
-  ChevronRight,
-  ArrowUpRight,
-  ShoppingCart,
-  LogOut,
-} from 'lucide-react';
-
+import React, { useEffect, useMemo, useState } from 'react';
+import { CircleUserRound, PackageCheck, BriefcaseBusiness, Wallet, MessageCircle, Gift, LifeBuoy, Settings, Bell, LayoutDashboard, ChevronRight, ArrowUpRight, ShoppingCart, LogOut } from 'lucide-react';
 import styles from './CustomerDashboard.module.css';
+import { api } from './lib/api.js';
 
-const navItems = [
-  ['Overview', 'dashboard', LayoutDashboard],
-  ['My Cart', 'cart', ShoppingCart],
-  ['Orders & bookings', 'orders', PackageCheck],
-  ['Applications', 'applications', BriefcaseBusiness],
-  ['Saved items', 'saved', Gift],
-  ['Wallet', 'wallet', Wallet],
-  ['Messages', 'messages', MessageCircle],
-  ['Referrals', 'referrals', Gift],
-  ['Notifications', 'notifications', Bell],
-  ['Profile', 'profile', CircleUserRound],
-  ['Support', 'support', LifeBuoy],
-  ['Settings', 'settings', Settings],
-];
+const navItems=[['Overview','dashboard',LayoutDashboard],['My Cart','cart',ShoppingCart],['Orders & bookings','orders',PackageCheck],['Applications','applications',BriefcaseBusiness],['Saved items','saved',Gift],['Wallet','wallet',Wallet],['Messages','messages',MessageCircle],['Referrals','referrals',Gift],['Notifications','notifications',Bell],['Profile','profile',CircleUserRound],['Support','support',LifeBuoy],['Settings','settings',Settings]];
+const rows=value=>Array.isArray(value)?value:(value?.items||[]);
+const date=value=>value?new Date(value).toLocaleDateString('en-NG'):'—';
 
-export default function CustomerDashboard({
-  user = {},
-  onNavigate = () => {},
-  cartCount = 0,
-  onLogout = () => onNavigate('account'),
-}) {
-  const [active, setActive] = useState('dashboard');
+export default function CustomerDashboard({user={},onNavigate=()=>{},cartCount=0,onLogout=()=>onNavigate('account')}) {
+  const [active,setActive]=useState('dashboard');
+  const [data,setData]=useState({orders:[],applications:[],rides:[],deliveries:[],wallet:null,unreadMessages:0,unreadNotifications:0});
+  const [loading,setLoading]=useState(true);
+  const [error,setError]=useState('');
+  const firstName=(user.name||'there').trim().split(/\s+/)[0]||'there';
 
-  const firstName =
-    (user.name || 'there').trim().split(/\s+/)[0] || 'there';
+  useEffect(()=>{
+    let activeRequest=true;
+    Promise.allSettled([
+      api.get('/orders'),api.get('/my/applications'),api.get('/rides/mine'),
+      api.get('/deliveries/mine'),api.get('/wallet/'),api.get('/conversations'),
+      api.get('/notifications/unread_count'),
+    ]).then(results=>{
+      if(!activeRequest)return;
+      const value=index=>results[index].status==='fulfilled'?results[index].value:null;
+      const orders=rows(value(0)).filter(item=>item.buyer_pid===user.pid);
+      const conversations=rows(value(5));
+      setData({
+        orders,applications:rows(value(1)),rides:rows(value(2)),deliveries:rows(value(3)),wallet:value(4),
+        unreadMessages:conversations.reduce((sum,item)=>sum+Number(item.unread_count||0),0),
+        unreadNotifications:Number(value(6)?.unread_count||0),
+      });
+      if(results.every(item=>item.status==='rejected'))setError('Your dashboard could not retrieve account data from KHUB.');
+    }).finally(()=>{if(activeRequest)setLoading(false);});
+    return()=>{activeRequest=false;};
+  },[user.pid]);
 
-  const go = (id) => {
-    if (id === 'cart') {
-      onNavigate('cart');
-      return;
-    }
+  const activeOrders=data.orders.filter(item=>['paid_escrow','delivered','dispute_open'].includes(item.status));
+  const serviceOrders=data.orders.filter(item=>item.listing_vertical==='service');
+  const activities=useMemo(()=>{
+    const items=[
+      ...data.orders.map(item=>({id:item.pid,title:item.listing_title,kind:item.listing_vertical==='service'?'Service order':'Marketplace order',status:item.status,amount:item.amount_display,date:item.created_at,action:'orders-bookings'})),
+      ...data.rides.map(item=>({id:item.pid,title:'Ride · '+(item.status||''),kind:'Ride',status:item.status,amount:item.fare_display,date:item.created_at,action:'ride-tracking'})),
+      ...data.deliveries.map(item=>({id:item.pid,title:'Delivery · '+(item.tracking_code||''),kind:'Delivery',status:item.status,amount:item.fee_display,date:item.created_at,action:'delivery-details'})),
+      ...data.applications.map(item=>({id:item.pid,title:item.listing_title||'Job application',kind:'Job application',status:item.status,amount:'',date:item.created_at,action:'job-application'})),
+    ];
+    return items.sort((a,b)=>new Date(b.date||0)-new Date(a.date||0)).slice(0,6);
+  },[data]);
 
-    if (id === 'wallet') {
-      onNavigate('wallet');
-      return;
-    }
-
-    if (id === 'settings' || id === 'profile') {
-      onNavigate('settings');
-      return;
-    }
-
-    if (id === 'messages') {
-      onNavigate('messages');
-      return;
-    }
-
-    if (id === 'support') {
-      onNavigate('support');
-      return;
-    }
-
-    if (id === 'notifications') {
-      onNavigate('notifications');
-      return;
-    }
-
-    if (id === 'orders') {
-      onNavigate('orders-bookings');
-      return;
-    }
-
-    if (id === 'referrals') {
-      onNavigate('referrals');
-      return;
-    }
-
-    if (id === 'applications') {
-      onNavigate('job-application');
-      return;
-    }
-
-    if (id === 'saved') {
-      onNavigate('discover');
-      return;
-    }
-
-    setActive(id);
+  const go=id=>{
+    if(id==='cart')onNavigate('cart');
+    else if(id==='wallet')onNavigate('wallet');
+    else if(id==='settings'||id==='profile')onNavigate('settings');
+    else if(id==='messages')onNavigate('messages');
+    else if(id==='support')onNavigate('support');
+    else if(id==='notifications')onNavigate('notifications');
+    else if(id==='orders')onNavigate('orders-bookings');
+    else if(id==='referrals')onNavigate('referrals');
+    else if(id==='applications')onNavigate('job-listings');
+    else if(id==='saved')onNavigate('discover');
+    else setActive(id);
   };
 
-  return (
-    <div className={styles.dashboard}>
-      <aside
-        className={styles.sidebar}
-        aria-label="Customer dashboard navigation"
-      >
-        {navItems.map(([label, id, Icon]) => (
-          <button
-            key={id}
-            className={`${styles.sideLink} ${
-              active === id ? styles.sideActive : ''
-            }`}
-            onClick={() => go(id)}
-            aria-current={active === id ? 'page' : undefined}
-          >
-            <Icon size={16} />
-
-            <span>
-              {label}
-
-              {id === 'cart' && cartCount > 0 && (
-                <span
-                  className={styles.cartBadge}
-                  aria-label={`${cartCount} items in cart`}
-                >
-                  {cartCount}
-                </span>
-              )}
-            </span>
-          </button>
-        ))}
-      </aside>
-
-      <main className={styles.content}>
-        <button type="button" className={styles.dashboardLogout} onClick={onLogout}><LogOut size={16} /> Log out</button>
-        {active === 'dashboard' ? (
-          <>
-            <div className={styles.welcome}>
-              <h1>Good morning, {firstName}.</h1>
-              <p>08 Role workspaces / User dashboard</p>
-              <span>
-                Your everyday, connected · Sunday 11 October 2026
-              </span>
-            </div>
-
-            <section
-              className={styles.metrics}
-              aria-label="Account summary"
-            >
-              <article>
-                <strong>1</strong>
-                <span>Active orders</span>
-                <small>KH-10482 · Preparing</small>
-              </article>
-
-              <article>
-                <strong>1</strong>
-                <span>Service bookings</span>
-                <small>13 Oct · Ada Studio</small>
-              </article>
-
-              <article>
-                <strong>1</strong>
-                <span>Applications</span>
-                <small>Cedar Digital · Submitted</small>
-              </article>
-
-              <article>
-                <strong>₦86,500</strong>
-                <span>Wallet available</span>
-                <small>Pending ₦12,000 separate</small>
-              </article>
-            </section>
-
-            <div className={styles.columns}>
-              <div className={styles.mainColumn}>
-                <section className={styles.panel}>
-                  <h2>Keep your plans moving</h2>
-
-                  <p>
-                    Ada Studio discovery call
-                    <br />
-                    Tue 13 Oct · 10:00 WAT · Standard identity · ₦78,750
-                    <br />
-                    ✓ Booking confirmed
-                  </p>
-
-                  <button
-                    className={styles.primary}
-                    onClick={() => onNavigate('orders-bookings')}
-                  >
-                    Open booking
-                  </button>
-
-                  <p>
-                    Your next good finds
-                    <br />
-                    KH-10482 · Lounge chair + headphones · ₦207,000
-                    <br />
-                    ● Sellers preparing
-                  </p>
-
-                  <button
-                    className={styles.textLink}
-                    onClick={() => onNavigate('orders-bookings')}
-                  >
-                    Track order
-                  </button>
-                </section>
-
-                <section className={styles.panel}>
-                  <h2>Recent activity</h2>
-
-                  <p>
-                    Cedar Digital application
-                    <br />
-                    Reference: KH-AP-9012　/　Status: ✓ Submitted · 11
-                    Oct　/　Next step: View application
-                  </p>
-
-                  <p>
-                    Economy ride · Lagos
-                    <br />
-                    Reference: KH-RD-5520　/　Status: ● In progress ·
-                    ₦5,200　/　Next step: Open tracking
-                  </p>
-
-                  <button
-                    className={styles.textLink}
-                    onClick={() => onNavigate('ride-tracking')}
-                  >
-                    Track active ride
-                  </button>
-
-                  <p>
-                    Brand samples delivery
-                    <br />
-                    Reference: KH-DL-8821　/　Status: ◷ Pickup
-                    scheduled　/　Next step: View delivery
-                  </p>
-                </section>
-              </div>
-
-              <aside className={styles.rightColumn}>
-                <section
-                  className={`${styles.panel} ${styles.walletPanel}`}
-                >
-                  <h2>Your wallet</h2>
-                  <h3>₦86,500 available</h3>
-
-                  <p>
-                    Pending referral / refund funds are not spendable.
-                  </p>
-
-                  <button
-                    className={styles.primary}
-                    onClick={() => onNavigate('wallet')}
-                  >
-                    Top up wallet
-                  </button>
-
-                  <button
-                    className={styles.textLink}
-                    onClick={() => onNavigate('wallet')}
-                  >
-                    View transactions
-                  </button>
-                </section>
-
-                <section className={styles.panel}>
-                  <h2>A little update</h2>
-                  <p>● 2 unread messages</p>
-                  <p>
-                    Ada Studio: “Looking forward to our discovery call.”
-                  </p>
-
-                  <button
-                    className={styles.textLink}
-                    onClick={() => onNavigate('messages')}
-                  >
-                    Open inbox
-                  </button>
-                </section>
-
-                <section className={styles.panel}>
-                  <h2>Build your KHUB profile</h2>
-
-                  <p>
-                    Profile 85% complete. Add a short bio so providers
-                    understand your goals.
-                  </p>
-
-                  <button
-                    className={styles.textLink}
-                    onClick={() => onNavigate('settings')}
-                  >
-                    Edit profile
-                  </button>
-                </section>
-              </aside>
-            </div>
-          </>
-        ) : (
-          <section className={styles.panel}>
-            <h1>
-              {navItems.find((item) => item[1] === active)?.[0] ||
-                'Overview'}
-            </h1>
-
-            <p>
-              This area is ready for your KHUB{' '}
-              {navItems
-                .find((item) => item[1] === active)?.[0]
-                .toLowerCase() || 'dashboard'}{' '}
-              details.
-            </p>
-
-            <button
-              className={styles.primary}
-              onClick={() => setActive('dashboard')}
-            >
-              Back to overview <ChevronRight size={16} />
-            </button>
-
-            <button
-              className={styles.textLink}
-              onClick={() => onNavigate('settings')}
-            >
-              Open Settings <ArrowUpRight size={15} />
-            </button>
+  return <div className={styles.dashboard}>
+    <aside className={styles.sidebar} aria-label="Customer dashboard navigation">{navItems.map(([label,id,Icon])=><button key={id} className={styles.sideLink+(active===id?' '+styles.sideActive:'')} onClick={()=>go(id)} aria-current={active===id?'page':undefined}><Icon size={16}/><span>{label}{id==='cart'&&cartCount>0&&<span className={styles.cartBadge} aria-label={cartCount+' items in cart'}>{cartCount}</span>}</span></button>)}</aside>
+    <main className={styles.content}>
+      <button type="button" className={styles.dashboardLogout} onClick={onLogout}><LogOut size={16}/> Log out</button>
+      <div className={styles.welcome}><h1>Welcome back, {firstName}.</h1><p>08 Role workspaces / User dashboard</p><span>Your KHUB account activity · {loading?'Refreshing live data…':'Live backend data'}</span></div>
+      {error&&<p className={styles.panel} role="alert">{error}</p>}
+      <section className={styles.metrics} aria-label="Account summary">
+        <article><strong>{activeOrders.length}</strong><span>Active orders</span><small>Orders currently in escrow or dispute</small></article>
+        <article><strong>{serviceOrders.length}</strong><span>Service orders</span><small>Service listings purchased through KHUB</small></article>
+        <article><strong>{data.applications.length}</strong><span>Applications</span><small>Your submitted job applications</small></article>
+        <article><strong>{data.wallet?.balance_display||'—'}</strong><span>Wallet available</span><small>Spendable backend wallet balance</small></article>
+      </section>
+      <div className={styles.columns}>
+        <div className={styles.mainColumn}>
+          <section className={styles.panel}><h2>Recent activity</h2>
+            {activities.map(item=><article key={item.id} className={styles.activity}><h3>{item.title}</h3><p>{item.kind} · {item.status} · {item.amount||'—'} · {date(item.date)}</p><button className={styles.textLink} onClick={()=>onNavigate(item.action)}>Open activity</button></article>)}
+            {!loading&&activities.length===0&&<p>No orders, rides, deliveries or applications have been recorded yet.</p>}
+            <button className={styles.primary} onClick={()=>onNavigate('orders-bookings')}>View all activity</button>
           </section>
-        )}
-      </main>
-    </div>
-  );
+          <section className={styles.panel}><h2>Keep exploring</h2><p>Browse current listings, apply for jobs or find local services.</p><button className={styles.textLink} onClick={()=>onNavigate('shop')}>Shop listings</button><button className={styles.textLink} onClick={()=>onNavigate('services')}>Find services</button><button className={styles.textLink} onClick={()=>onNavigate('job-listings')}>Explore jobs</button></section>
+        </div>
+        <aside className={styles.rightColumn}>
+          <section className={styles.panel+' '+styles.walletPanel}><h2>Your wallet</h2><h3>{data.wallet?.balance_display||'—'}</h3><p>Funding is processed through Flutterwave. Wallet payments and escrow are handled by KHUB.</p><button className={styles.primary} onClick={()=>onNavigate('wallet')}>Open wallet</button><button className={styles.textLink} onClick={()=>onNavigate('wallet')}>View transactions</button></section>
+          <section className={styles.panel}><h2>Your inbox</h2><p>{data.unreadMessages} unread messages</p><p>{data.unreadNotifications} unread notifications</p><button className={styles.textLink} onClick={()=>onNavigate('messages')}>Open messages</button><button className={styles.textLink} onClick={()=>onNavigate('notifications')}>Open notifications <ArrowUpRight size={15}/></button></section>
+          <section className={styles.panel}><h2>Account settings</h2><p>Keep your contact details and verification information up to date.</p><button className={styles.textLink} onClick={()=>onNavigate('settings')}>Edit profile <ChevronRight size={15}/></button></section>
+        </aside>
+      </div>
+    </main>
+  </div>;
 }
