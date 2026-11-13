@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { ArrowLeft, ArrowRight, ArrowUpRight, Heart, Search, SlidersHorizontal } from 'lucide-react';
 import styles from './ShopPage.module.css';
-import placeholder from './assets/chair.jpg';
 import { listingsApi } from './lib/listings.js';
 import ProductDetailPage from './ProductDetailPage.jsx';
 
@@ -10,7 +9,7 @@ const sidebarCategories = ['Furniture & home', 'Electronics', 'Fashion', 'Home &
 const money = value => `₦${Number(value || 0).toLocaleString('en-NG')}`;
 const mapListing = row => {
   const amount = row.effective_price_kobo ?? row.price_kobo ?? 0;
-  return { id: row.pid, pid: row.pid, title: row.title, name: row.title, category: row.category || 'Other', location: row.location || 'Nigeria', city: row.location || 'Nigeria', condition: row.attributes?.condition || 'Listed on KHUB', price: amount / 100, numericPrice: amount / 100, priceKobo: amount, image: placeholder, seller: 'KHUB marketplace seller', description: row.description, vertical: row.vertical, status: row.status };
+  return { id: row.pid, pid: row.pid, title: row.title, name: row.title, category: row.category || 'Other', location: row.location || 'Nigeria', city: row.location || 'Nigeria', condition: row.attributes?.condition || 'Listed on KHUB', price: amount / 100, numericPrice: amount / 100, priceKobo: amount, image: null, seller: 'Seller on KHUB', description: row.description, vertical: row.vertical, status: row.status };
 };
 
 export default function ShopPage({ onHome, onRent, onNavigate, onAddToCart }) {
@@ -89,7 +88,7 @@ export default function ShopPage({ onHome, onRent, onNavigate, onAddToCart }) {
       {loading && <div className={styles.empty}>Loading live KHUB listings…</div>}
       {!loading && error && <div className={styles.empty} role="alert">{error} <button onClick={() => setPageNumber(pageNumber)}>Retry</button></div>}
       {!loading && !error && <div className={styles.grid}>{items.map(p => <article className={styles.card} key={p.id}>
-        <div className={styles.photo}><button type="button" onClick={() => openDetails(p)} aria-label={`View ${p.title}`}><img src={p.image} alt={p.title} /></button><button className={styles.heart} onClick={() => toggleSave(p.id)} aria-label={saved.includes(p.id) ? 'Remove saved item' : 'Save item'}><Heart size={18} fill={saved.includes(p.id) ? 'currentColor' : 'none'} /></button></div>
+        <div className={styles.photo}>{p.image ? <button type="button" onClick={() => openDetails(p)} aria-label={`View ${p.title}`}><img src={p.image} alt={p.title} /></button> : <button type="button" onClick={() => openDetails(p)} aria-label={`View ${p.title}`} className={styles.photoPlaceholder}>KHUB listing</button>}<button className={styles.heart} onClick={() => toggleSave(p.id)} aria-label={saved.includes(p.id) ? 'Remove saved item' : 'Save item'}><Heart size={18} fill={saved.includes(p.id) ? 'currentColor' : 'none'} /></button></div>
         <div className={styles.cardBody}><h2><button type="button" onClick={() => openDetails(p)}>{p.title}</button></h2><p>{p.location} · {p.category}</p><strong>{money(p.price)}</strong><div className={styles.links}><button onClick={() => openDetails(p)}>View details <ArrowUpRight size={14} /></button><button onClick={() => toggleSave(p.id)}><Heart size={14} fill={saved.includes(p.id) ? 'currentColor' : 'none'} />{saved.includes(p.id) ? 'Saved' : 'Save'}</button></div></div>
       </article>)}{items.length === 0 && <div className={styles.empty}>No live products match your search. Try another keyword or clear your filters.</div>}</div>}
       <div className={styles.pagination}><p>Showing {items.length} of {meta.total_items} · Page {pageNumber} of {meta.total_pages}</p><div className={styles.pageControls}>{pageNumber > 1 && <button onClick={() => setPageNumber(p => p - 1)}><ArrowLeft size={14} /> Previous page</button>}<button onClick={() => setPageNumber(p => p + 1)} disabled={pageNumber >= meta.total_pages}>Next page <ArrowRight size={14} /></button></div></div>
