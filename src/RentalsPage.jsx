@@ -36,6 +36,11 @@ export default function RentalsPage({ onHome, onShop, onNavigate }) {
 
   const nights = start && end ? Math.max(1, Math.ceil((new Date(end) - new Date(start)) / 86400000)) : 0;
   const filtered = rentals.filter(item => !query || `${item.title} ${item.location} ${item.meta}`.toLowerCase().includes(query.toLowerCase()));
+  if (selected) {
+    const related = filtered.filter(item=>item.pid!==selected.pid&&(item.category===selected.category||item.location===selected.location)).slice(0,4);
+    return <main className={styles.main}><button className={styles.back} onClick={()=>setSelected(null)}><ArrowLeft size={16}/> Back to rentals</button><div className={styles.eyebrow}>03 / RENTALS / LISTING DETAIL</div><h1>{selected.title}</h1><p className={styles.subtitle}>{selected.location} · {selected.category}</p><section className={styles.detail}><div className={styles.imageFallback}>Rental listing · Images are supplied by the owner</div><h2>{selected.price>0?money(selected.price):'Contact provider'}</h2><p>{selected.description||'The owner has not supplied a full description. Contact the owner to confirm condition, availability, deposit, rental dates and other terms.'}</p><LiveMap label={selected.title+' location map'} query={selected.location}/><p>{start&&end?'Requested dates: '+start+' to '+end+' ('+nights+' days). Availability still requires owner confirmation.':'Choose requested dates in the rental search panel and confirm availability with the owner.'}</p><button className={styles.primary} onClick={()=>onNavigate?.('messages')}>Message owner to confirm availability</button></section><section className={styles.resultsBar}><h2>Related rentals</h2></section><section className={styles.grid}>{related.map(item=><article className={styles.card} key={item.pid}><div className={styles.imageFallback}>Rental listing</div><div className={styles.cardBody}><h2><button onClick={()=>setSelected(item)}>{item.title}</button></h2><p>{item.location} · {item.category}</p><strong>{item.price>0?money(item.price):'Contact provider'}</strong><button onClick={()=>setSelected(item)}>View details <ArrowUpRight size={14}/></button></div></article>)}</section>{related.length===0&&<p>No related live rentals are available right now.</p>}</main>;
+  }
+
 
   return <div className={styles.page}>
     <main className={styles.main}>
