@@ -23,16 +23,23 @@ export default function CheckoutPage({ onSuccess, onNavigate, onBack, user, cart
 
   const total = cartItems.reduce((sum, item) => sum + Number(item.price || 0) * Number(item.qty || 1), 0);
   const placeOrder = async () => {
-    if (cartItems.length !== 1) {
-      setError('The current order API creates one order at a time. Keep one product in your cart for this checkout, or complete the items separately.');
-      return;
-    }
-    const item = cartItems[0];
-    if (!item?.id) { setError('This cart item is missing its KHUB listing reference. Remove it and add the live listing again.'); return; }
+    if (!cartItems.length) { setError('Your cart is empty. Add a live listing before checkout.'); return; }
+    if (cartItems.some(item => !item?.id)) { setError('A cart item is missing its KHUB listing reference. Remove it and add the live listing again.'); return; }
     setPlacing(true); setError(''); setNotice('');
     try {
-      const order = await api.post('/orders', { listing_pid: item.id, quantity: Number(item.qty || 1) });
-      onSuccess?.(order);
+      const result = await api.post('/orders/batch', {
+        items: cartItems.map(item => ({ listing_pid: item.id, quantity: Number(item.qty || 1) })),
+      });
+      const orders = result?.orders || [];
+      if (!orders.length) throw new Error('KHUB did not return any created orders.');
+      onSuccess?.({
+        orders,
+        pid: orders[0].pid,
+        status: 'paid_escrow',
+        amount_kobo: orders.reduce((sum, order) => sum + Number(order.amount_kobo || 0), 0),
+        commission_kobo: orders.reduce((sum, order) => sum + Number(order.commission_kobo || 0), 0),
+        seller_net_kobo: orders.reduce((sum, order) => sum + Number(order.seller_net_kobo || 0), 0),
+      });
     } catch (err) {
       const message = err?.message || 'Order could not be placed.';
       setError(message);
@@ -51,13 +58,13 @@ export default function CheckoutPage({ onSuccess, onNavigate, onBack, user, cart
           <section className={styles.card}><h2>Items in this checkout</h2>
             {cartItems.map(item=><div className={styles.field} key={item.id}><strong>{item.name}</strong><p>Quantity {item.qty} · {money(item.price)} each · Estimated {money(Number(item.price || 0) * Number(item.qty || 1))}</p></div>)}
             {!cartItems.length && <p>Your cart is empty. Add a live product listing before checkout.</p>}
-            {cartItems.length > 1 && <p className={styles.note}>The current backend exposes one-order-at-a-time checkout. Complete items separately to avoid partial multi-item payment.</p>}
+            {cartItems.length > 1 && <p className={styles.note}>All cart items are checked and charged together by the backend. If any item is unavailable or funds are insufficient, the entire checkout is rejected.</p>}
           </section>
           <section className={styles.card}><h2>Payment method</h2><div className={styles.field}><ShieldCheck size={18}/><strong>KHUB wallet · escrow protected</strong><p>Place the order only after the backend confirms sufficient wallet funds. The seller receives funds after the order's confirmation workflow completes.</p></div>
             <p>Available wallet balance: <strong>{loading ? 'Checking…' : wallet?.balance_display || money(wallet?.balance_kobo)}</strong></p>
             <button className={styles.outline} onClick={()=>onNavigate('wallet')}>Fund wallet with Flutterwave</button>
           </section>
-          <button className={styles.primary} disabled={placing || loading || cartItems.length !== 1} onClick={placeOrder}>{placing?'Placing secure order…':'Place order with KHUB wallet'}</button>
+          <button className={styles.primary} disabled={placing || loading || cartItems.length === 0} onClick={placeOrder}>{placing?'Placing secure order…':'Place order with KHUB wallet'}</button>
           <button className={styles.link} onClick={onBack}>Back to cart</button>
         </section>
         <aside className={styles.right}><section className={styles.card}><h2>Order summary</h2><p>Items · {cartItems.reduce((n,i)=>n+Number(i.qty||1),0)}</p><p>Estimated subtotal · {money(total)}</p><hr/><h3>Estimated total · {money(total)}</h3><small>The server recalculates the final amount and applicable commission from the listing. No card or bank transfer is processed directly by this page.</small></section><section className={styles.tip}><strong>Protected transaction</strong><p>KHUB debits the buyer wallet into escrow. The seller payout and platform commission are recorded when the order is completed.</p></section></aside>
