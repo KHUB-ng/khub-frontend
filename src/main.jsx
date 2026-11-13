@@ -151,9 +151,7 @@ function App() {
   const [search, setSearch] = useState('');
   const [globalSearch, setGlobalSearch] = useState('');
   const [mobileMenu, setMobileMenu] = useState(false);
-  const [modal, setModal] = useState(null);
   const [toast, setToast] = useState('');
-  const [submitted, setSubmitted] = useState(false);
 
   // Stores the product currently being viewed.
   const [selectedProduct, setSelectedProduct] = useState(null);
@@ -238,13 +236,14 @@ function App() {
     setMobileMenu(false);
   };
 
-  const openModal = (
-    title,
-    description,
-    action = 'Continue'
-  ) => {
-    setSubmitted(false);
-    setModal({ title, description, action });
+  const openModal = (title) => {
+    if (!currentUser) {
+      navigate('account');
+      notify('Sign in to contact a KHUB member.');
+      return;
+    }
+    notify(`${title}: continue securely in KHUB messages.`);
+    navigate('messages');
   };
 
   const toggleSaved = (id) =>
@@ -310,11 +309,6 @@ function App() {
 
     addProductToCart(product, false);
     navigate('delivery-details');
-  };
-
-  const onSubmit = (e) => {
-    e.preventDefault();
-    setSubmitted(true);
   };
 
   const submitGlobalSearch = (event) => {
@@ -1736,149 +1730,52 @@ function App() {
 
             <section className={styles.section} id="rent">
               <div className={styles.sectionHeading}>
-                <h2>Space for what’s next</h2>
-                <p>
-                  From a weekend stay to the tools for your next big idea.
-                </p>
+                <h2>Spaces and equipment to rent</h2>
+                <p>Current rental listings published by KHUB members.</p>
               </div>
-
-              <div className={styles.featureRow}>
-                <img
-                  className={styles.featureImage}
-                  src={rental}
-                  alt="A sunlit contemporary apartment with a comfortable living room"
-                />
-
-                <div className={styles.featurePanel}>
-                  <span className={styles.tag}>
-                    Rental · Lekki, Lagos
-                  </span>
-
-                  <h3>A light-filled place to pause.</h3>
-
-                  <p>
-                    Furnished one-bedroom apartment. Wi-Fi, workspace and
-                    flexible short stays.
-                  </p>
-
-                  <strong className={styles.priceLarge}>
-                    ₦65,000 / night
-                  </strong>
-
-                  <small>
-                    Refundable deposit ₦100,000 · Fees shown before booking
-                  </small>
-
-                  <button
-                    className={styles.primary}
-                    onClick={() => navigate('rentals')}
-                  >
-                    Explore rentals
-                  </button>
-                </div>
+              <div className={styles.productGrid}>
+                {products.filter(item => item.kind === 'Rent').slice(0, 3).map(item => (
+                  <article className={styles.productCard} key={item.id} onClick={() => openProduct(item)}>
+                    <div className={styles.productImage}><img src={item.image} alt={item.name} /></div>
+                    <div className={styles.productInfo}><h3>{item.name}</h3><p>{item.category}</p><strong>{item.price}</strong></div>
+                  </article>
+                ))}
+                {products.filter(item => item.kind === 'Rent').length === 0 && <p>No active rental listings are available right now.</p>}
               </div>
+              <button className={styles.primary} onClick={() => navigate('rentals')}>Explore rentals</button>
             </section>
 
             <section className={styles.section} id="services">
               <div className={styles.sectionHeading}>
-                <h2>Expertise, a conversation away</h2>
-                <p>
-                  Find a provider who understands the work you want to do.
-                </p>
+                <h2>Services from KHUB providers</h2>
+                <p>Explore real services currently listed on the platform.</p>
               </div>
-
-              <div
-                className={`${styles.featureRow} ${styles.reverseOnMobile}`}
-              >
-                <img
-                  className={styles.featureImage}
-                  src={service}
-                  alt="A creative professional working on a design project"
-                />
-
-                <div className={styles.featurePanel}>
-                  <span className={styles.tag}>
-                    Creative services
-                  </span>
-
-                  <h3>Brand identity by Ada Studio</h3>
-
-                  <p>
-                    Logos, visual systems and launch-ready assets for
-                    growing Nigerian businesses.
-                  </p>
-
-                  <strong className={styles.priceLarge}>
-                    From ₦45,000
-                  </strong>
-
-                  <small>
-                    ★ 4.9 · 28 illustrative reviews · Identity verified
-                  </small>
-
-                  <button
-                    className={styles.primary}
-                    onClick={() => navigate('services')}
-                  >
-                    Explore all services
-                  </button>
-                </div>
+              <div className={styles.productGrid}>
+                {products.filter(item => item.kind === 'Services').slice(0, 3).map(item => (
+                  <article className={styles.productCard} key={item.id} onClick={() => openProduct(item)}>
+                    <div className={styles.productImage}><img src={item.image} alt={item.name} /></div>
+                    <div className={styles.productInfo}><h3>{item.name}</h3><p>{item.category}</p><strong>{item.price}</strong></div>
+                  </article>
+                ))}
+                {products.filter(item => item.kind === 'Services').length === 0 && <p>No active service listings are available right now.</p>}
               </div>
+              <button className={styles.primary} onClick={() => navigate('services')}>Explore services</button>
             </section>
 
             <section className={styles.section} id="jobs">
               <div className={styles.sectionHeading}>
-                <h2>Find your next opportunity</h2>
-                <p>
-                  Explore work with clear terms, pay and location.
-                </p>
+                <h2>Current opportunities</h2>
+                <p>Job listings published by employers on KHUB.</p>
               </div>
-
-              <div className={styles.jobGrid}>
-                <JobCard
-                  title="Product designer"
-                  company="Cedar Digital · Lagos"
-                  type="Full-time · Hybrid"
-                  salary="₦450,000–₦650,000 / month"
-                  note="Health cover · Portfolio required"
-                  onClick={() => {
-                    setSelectedJob({
-                      title: 'Product designer',
-                      company: 'Cedar Digital',
-                      reference: 'KH-JB-3107',
-                      salary: '₦450,000–₦650,000 / month',
-                      location: 'Lagos',
-                      arrangement: 'Hybrid',
-                      type: 'Full-time',
-                      closes: '25 Oct 2026',
-                    });
-
-                    navigate('job-detail');
-                  }}
-                />
-
-                <JobCard
-                  title="Operations coordinator"
-                  company="Riverline Commerce · Abuja"
-                  type="Full-time · On-site"
-                  salary="₦250,000–₦350,000 / month"
-                  note="Monday–Friday · 2+ years experience"
-                  onClick={() => {
-                    setSelectedJob({
-                      title: 'Operations coordinator',
-                      company: 'Riverline Commerce',
-                      reference: 'KH-JB-3112',
-                      salary: '₦250,000–₦350,000 / month',
-                      location: 'Abuja',
-                      arrangement: 'On-site',
-                      type: 'Full-time',
-                      closes: '28 Oct 2026',
-                    });
-
-                    navigate('job-detail');
-                  }}
-                />
+              <div className={styles.productGrid}>
+                {products.filter(item => item.kind === 'Jobs').slice(0, 4).map(item => (
+                  <article className={styles.productCard} key={item.id} onClick={() => { setSelectedJob({ title: item.name, company: item.sellerName, reference: item.id, salary: item.price, location: item.location, description: item.description }); navigate('job-detail'); }}>
+                    <div className={styles.productInfo}><h3>{item.name}</h3><p>{item.category}</p><strong>{item.price}</strong></div>
+                  </article>
+                ))}
+                {products.filter(item => item.kind === 'Jobs').length === 0 && <p>No active job listings are available right now.</p>}
               </div>
+              <button className={styles.primary} onClick={() => navigate('job-listings')}>Explore jobs</button>
             </section>
 
             <section className={styles.section} id="city">
@@ -2327,97 +2224,7 @@ function App() {
             </div>
           )}
 
-          {modal && (
-            <div
-              className={styles.modalBackdrop}
-              role="presentation"
-              onMouseDown={(e) => {
-                if (e.target === e.currentTarget) {
-                  setModal(null);
-                }
-              }}
-            >
-              <section
-                className={styles.modal}
-                role="dialog"
-                aria-modal="true"
-                aria-labelledby="modal-title"
-              >
-                <button
-                  className={styles.modalClose}
-                  onClick={() => setModal(null)}
-                  aria-label="Close dialog"
-                >
-                  <X size={19} />
-                </button>
 
-                {submitted ? (
-                  <div className={styles.modalSuccess}>
-                    <CheckCircle2 size={34} />
-
-                    <h2>Thanks — you’re on your way.</h2>
-
-                    <p>
-                      This demo has recorded your interaction locally. No
-                      information was sent to a server.
-                    </p>
-
-                    <button
-                      className={styles.primary}
-                      onClick={() => setModal(null)}
-                    >
-                      Done
-                    </button>
-                  </div>
-                ) : (
-                  <>
-                    <span className={styles.tag}>
-                      KHUB · Local marketplace
-                    </span>
-
-                    <h2 id="modal-title">{modal.title}</h2>
-
-                    <p>{modal.description}</p>
-
-                    <form onSubmit={onSubmit}>
-                      <label>
-                        Your name
-                        <input
-                          required
-                          placeholder="Enter your name"
-                        />
-                      </label>
-
-                      <label>
-                        Email or phone
-                        <input
-                          required
-                          placeholder="you@example.com or phone number"
-                        />
-                      </label>
-
-                      <label>
-                        More details
-                        <textarea
-                          placeholder="Share a few details (optional)"
-                          rows="3"
-                        />
-                      </label>
-
-                      <button
-                        className={styles.primary}
-                        type="submit"
-                      >
-                        {modal.action} <ArrowRight size={15} />
-                      </button>
-
-                      <small>
-                        Demo interface only. Submitting will not send your
-                        details anywhere.
-                      </small>
-                    </form>
-                  </>
-                )}
               </section>
             </div>
           )}
