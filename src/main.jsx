@@ -52,6 +52,7 @@ import WalletPage from './WalletPage.jsx';
 import PublicStorefrontPage from './PublicStorefrontPage.jsx';
 import CustomerDashboard from './CustomerDashboard.jsx';
 import DriverDashboard from './DriverDashboard.jsx';
+import AgentDashboard from './AgentDashboard.jsx';
 import RideTrackingPage from './RideTrackingPage.jsx';
 import RideBookingPage from './RideBookingPage.jsx';
 import ServiceProviderDashboard from './ServiceProviderDashboard.jsx';
@@ -112,6 +113,7 @@ function getDashboardForRole(role) {
     case 'buyer': return 'dashboard';
     case 'seller': return 'seller-dashboard';
     case 'driver': return 'driver-dashboard';
+    case 'logistics_agent': return 'agent-dashboard';
     case 'provider':
     case 'service_provider': return 'provider-dashboard';
     case 'job poster':
@@ -334,7 +336,7 @@ function App() {
   const navigate = (destination) => {
     setMobileMenu(false);
     const protectedPages = new Set([
-      'settings', 'dashboard', 'driver-dashboard', 'provider-dashboard',
+      'settings', 'dashboard', 'driver-dashboard', 'agent-dashboard', 'provider-dashboard',
       'seller-dashboard', 'admin-dashboard', 'job-poster-dashboard',
       'orders', 'orders-bookings', 'referrals', 'messages', 'wallet',
       'job-application', 'delivery-details', 'ride-booking', 'checkout', 'payment-success',
@@ -354,6 +356,7 @@ function App() {
     const roleRoutes = {
       'seller-dashboard': 'seller',
       'driver-dashboard': 'driver',
+      'agent-dashboard': 'logistics_agent',
       'provider-dashboard': 'service_provider',
       'job-poster-dashboard': 'jobposter',
     };
@@ -424,6 +427,7 @@ function App() {
       destination === 'settings' ||
       destination === 'dashboard' ||
       destination === 'driver-dashboard' ||
+      destination === 'agent-dashboard' ||
       destination === 'provider-dashboard' ||
       destination === 'seller-dashboard' ||
       destination === 'admin-dashboard' ||
@@ -1191,6 +1195,12 @@ function App() {
         />
       ) : page === 'dashboard' ? (
         <CustomerDashboard
+          user={currentUser}
+          onNavigate={navigate}
+          onLogout={handleLogout}
+        />
+      ) : page === 'agent-dashboard' ? (
+        <AgentDashboard
           user={currentUser}
           onNavigate={navigate}
           onLogout={handleLogout}
