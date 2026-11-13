@@ -91,3 +91,5 @@
   .formCard { padding: 23px 20px; border-radius: 16px; }
   .footer { align-items: flex-start; flex-direction: column; padding: 16px 5%; gap: 8px; }
 }
+
+.googleSignIn{display:flex;justify-content:center;min-height:42px;width:100%;overflow:hidden}.googleSignIn>div{max-width:100%}
