@@ -6,7 +6,7 @@ const money = kobo => '₦' + (Number(kobo || 0) / 100).toLocaleString('en-NG', 
 const date = value => value ? new Date(value).toLocaleString('en-NG') : '—';
 const label = point => point?.label || point?.address || 'Location not provided';
 
-export default function OrdersBookingsPage({ onBack=()=>{}, onOpenOrder=()=>{}, onSupport=()=>{}, onNavigate=()=>{} }) {
+export default function OrdersBookingsPage({ onBack=()=>{}, onOpenOrder=()=>{}, onOpenRide=()=>{}, onSupport=()=>{}, onNavigate=()=>{} }) {
   const [records, setRecords] = useState([]);
   const [tab, setTab] = useState('All');
   const [query, setQuery] = useState('');
@@ -71,7 +71,7 @@ export default function OrdersBookingsPage({ onBack=()=>{}, onOpenOrder=()=>{}, 
   const visible = useMemo(()=>records.filter(row=>(tab==='All'||row.type===tab)&&([row.id,row.title,row.provider,row.type].join(' ').toLowerCase().includes(query.toLowerCase()))&&(status==='All statuses'||row.status.toLowerCase().includes(status.toLowerCase()))),[records,tab,query,status]);
   const action = row => {
     if(['Shopping','Services','Rentals','Jobs'].includes(row.type)) onNavigate('orders');
-    else if(row.type==='Rides') onNavigate('ride-tracking');
+    else if(row.type==='Rides') onOpenRide(row.pid);
     else if(row.type==='Delivery') onNavigate('delivery-details');
   };
 
