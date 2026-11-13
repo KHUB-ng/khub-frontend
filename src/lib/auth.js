@@ -28,6 +28,15 @@ export const authApi = {
     }, { auth: false });
   },
 
+  async verifyEmail(token) {
+    return api.get('/auth/verify/' + encodeURIComponent(token), { auth: false });
+  },
+
+  async exchangeMagicLink(token) {
+    const result = await api.get('/auth/magic-link/' + encodeURIComponent(token), { auth: false });
+    return normalizeLoginResponse(result);
+  },
+
   async requestPasswordReset(email) {
     return api.post('/auth/forgot', { email: email.trim().toLowerCase() }, { auth: false });
   },
