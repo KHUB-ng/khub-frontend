@@ -160,6 +160,7 @@ function App() {
   const [deliveryDetails, setDeliveryDetails] = useState(null);
   const [cartItems, setCartItems] = useState([]);
   const [selectedJob, setSelectedJob] = useState(null);
+  const [activeRidePid, setActiveRidePid] = useState('');
 
   useEffect(() => {
     let active = true;
