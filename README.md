@@ -1,129 +1,61 @@
-# KHUB Marketplace Frontend
+# KHUB Frontend
 
-A responsive React + Vite implementation of the supplied KHUB homepage reference. The UI uses function components, CSS Modules, local image crops from the supplied screenshot, and client-side interactions.
+React 19 + Vite 8 frontend for the KHUB marketplace and role workspaces. The interface preserves the supplied Figma visual direction and uses the KHUB API for account, listing, commerce, logistics and administration data.
 
-## Run locally
+## Local development
 
-1. Install Node.js 18+.
-2. In this directory run `npm install`.
-3. Run `npm run dev` and open the local URL printed by Vite.
-4. Run `npm run build` for a production build.
+- Node.js 22 (see `.nvmrc`)
+- `npm ci`
+- Copy `.env.example` to `.env.local` and set the public frontend configuration
+- `npm run dev`
+- `npm run build` for the production bundle
 
-## Implemented interactions
+## Environment variables
 
-- Responsive navigation and scroll-to-section links
-- Listing search and category filters
-- Save/unsave listings
-- Action dialogs for listing, rentals, services, jobs, rides, delivery, referrals and help
-- Local demo form validation and success state
-- Responsive mobile navigation and reduced-motion support
+| Variable | Purpose |
+| --- | --- |
+| `VITE_API_BASE_URL` | Public API origin including the `/api` prefix; defaults to `https://api.khub.com.ng/api` |
+| `VITE_GOOGLE_CLIENT_ID` | Google Identity Services OAuth web client ID; public identifier only |
 
-Forms are frontend-only and do not send data to a backend. Product names, prices, jobs, and marketplace claims are illustrative content matching the reference layout.
+Never put Flutterwave secret keys, Google client secrets, database credentials, R2 keys, JWT secrets or other private credentials in any `VITE_*` variable. Those belong in the backend hosting environment.
 
+## Deploy to Cloudflare Pages
 
+1. Connect the KHUB frontend repository and select `feat/production-frontend-integration` for preview, or the approved production branch after review.
+2. Set the build command to `npm run build` and the output directory to `dist`.
+3. Use Node.js 22 in the build environment.
+4. Add `VITE_API_BASE_URL` and `VITE_GOOGLE_CLIENT_ID` to the Pages environment settings for each environment.
+5. Configure the matching frontend origin in backend CORS and in the Google OAuth authorised JavaScript origins.
+6. The `public/_redirects` file provides the SPA fallback. `wrangler.toml` declares the Pages output directory.
 
+## Deploy to Vercel
 
-# KHUB Administrator KYC Review Page
+1. Import the frontend repository into Vercel and select Vite as the framework preset.
+2. Set the build command to `npm run build` and output directory to `dist`.
+3. Set Node.js 22 and add `VITE_API_BASE_URL` and `VITE_GOOGLE_CLIENT_ID` for Preview and Production separately.
+4. Add each deployed frontend origin to backend CORS and Google OAuth authorised JavaScript origins.
+5. `vercel.json` supplies SPA rewrites and baseline response headers.
 
-## Installation
+## Integrated features
 
-Copy these files into the folder containing your other React pages:
+- Backend email/password, verification, password reset and Google ID-token sign-in
+- Live product, service, rental and job listing discovery, detail views and related listings
+- Wishlist, stock-aware multi-item checkout, wallet and Flutterwave server verification
+- Ride and delivery requests, route previews, driver/agent location sharing and authenticated tracking snapshots
+- Admin queues for KYC, payouts, users, listings, drivers, delivery agents and sponsored placements
+- Sponsored listing requests, admin approval and public placements; proposed ad budgets are not charged by the current workflow
+- New-arrival and trending shelves; trending is ranked by wishlist saves
 
-- `KYCReviewPage.jsx`
-- `KYCReviewPage.module.css`
+## Production checklist
 
-Make sure both files are in the same folder because the JSX imports the CSS Module.
+The feature branches are implementation branches, not a deployment approval. Before production use:
 
-## Integration
+- Configure the production API, CORS, OAuth origins, payment, email, storage and monitoring secrets on the backend host.
+- Provision the private KYC bucket, migrate all legacy KYC files from the public bucket, verify object counts/checksums and remove public copies.
+- Complete rate limiting, security-header/CSP review, dependency and security scans, backup restore drills and load tests.
+- Complete Flutterwave sandbox and live acceptance tests, webhook replay tests and finance reconciliation.
+- Complete commission general-ledger and payout reconciliation before enabling commission rules.
+- Complete buyer, seller, service provider, job poster, driver, delivery agent and administrator acceptance tests.
+- Have the Privacy, Refund, Terms, Cancellation and Advertising policies reviewed against KHUB's actual legal entity and operating practices.
 
-Import the component into your existing admin dashboard or routing component.
-
-```jsx
-import KYCReviewPage from './KYCReviewPage';
-
-<KYCReviewPage
-  onBack={() => setCurrentPage('admin-dashboard')}
-/>
-```
-
-Adjust the import path and `onBack` callback to match KHUB's existing routing.
-
-The page accepts two optional props:
-
-- `onBack`: callback used when the administrator clicks Back to admin dashboard.
-- `cases`: optional array of cases to display instead of the built-in demo cases.
-
-If `cases` is omitted, fictional demonstration data is displayed.
-
-## Features
-
-- Search and filter KYC cases.
-- View identity and business verification statuses.
-- Review the document list.
-- Complete a verification checklist.
-- Approve eligible cases.
-- Reject cases with a reason.
-- Request additional information.
-- View the case audit timeline.
-- Responsive layout for desktop and mobile screens.
-
-## Prototype limitations
-
-This component is a frontend prototype.
-
-- Cases are fictional.
-- Checklist updates, decisions, and audit entries are stored in React state and disappear on refresh.
-- Document access only logs a demo request; it does not retrieve an actual file.
-- Approval and rejection do not update a backend.
-- Applicants are not notified.
-- No actual NIN or CAC verification is performed.
-
-Do not use the demo implementation to make real identity-verification decisions.
-
-## Production security requirements
-
-Before processing real NIN or CAC data, KHUB must implement the following:
-
-1. **Administrator authorization:** Use KHUB's existing authentication system and enforce reviewer permissions on the server. A frontend route or hidden button is not sufficient authorization.
-
-2. **Private document storage:** Store identity and business documents in private storage. Authorize every document request on the backend and return a short-lived signed URL or stream the document through an authorized endpoint. Never expose identity documents through public URLs.
-
-3. **Secure uploads:** Validate file size, file signature, actual file type, and allowed formats on the server. Apply malware scanning where available.
-
-4. **Persistent case records:** Store case information, checklist results, statuses, and decisions in the backend database. Enforce approval requirements on the server rather than trusting React state.
-
-5. **Audit logging:** Record the administrator ID, case ID, action, timestamp, reason, and relevant case version. Restrict alteration and deletion of audit records.
-
-6. **NIN verification:** Integrate an authorized identity-verification provider. Do not expose or log raw NIN values unnecessarily. Store only the information required for the verification purpose.
-
-7. **CAC verification:** Verify business registration details against an authoritative source and check whether the applicant is authorized to represent the business when applicable.
-
-8. **Backend validation:** Validate every request, enforce rate limits, check permissions, handle concurrent reviews, and monitor suspicious document access.
-
-9. **Privacy and retention:** Establish consent, data-retention, deletion, access-review, and appeal policies before collecting real documents.
-
-10. **Verified status:** Award verified badges or enable seiller, rental-owner, and service-provider permissions only after the backend confirms that all required checks have passed.
-
-## Suggested API contract
-
-These endpoints are suggestions and are not implemented by this component.
-
-- `GET /admin/kyc/cases?status=...`
-- `GET /admin/kyc/cases/:id`
-- `POST /admin/kyc/cases/:id/documents/:documentId/access`
-- `PATCH /admin/kyc/cases/:id/checklist`
-- `POST /admin/kyc/cases/:id/decision`
-- `GET /admin/kyc/cases/:id/audit`
-
-Each endpoint must authenticate the request and verify that the administrator is authorized to access the requested case.
-
-## Recommended production workflow
-
-1. A user submits their identity-verification information.
-2. The backend sends the required identity data to an authorized verification provider.
-3. Business users submit CAC details and supporting documents when required by KHUB policy.
-4. The backend stores the case and documents securely.
-5. An authorized administrator reviews the verification result and applicable documents.
-6. The administrator completes the checklist and approves, rejects, or requests more information.
-7. The backend validates the decision, updates the case status, and appends an audit event.
-8. KHUB notifies the applicant and updates verification permissions only after the backend confirms the final status.
+No deployment is performed by this repository's feature-branch work.
