@@ -47,8 +47,8 @@ export default function ServicesPage({ onHome, onNavigate }) {
         {loading && <div className={styles.empty}>Loading live service listings…</div>}
         {!loading && error && <div className={styles.empty} role="alert">{error}</div>}
         {!loading && !error && <div className={styles.providerGrid}>{providers.map(provider=><article className={styles.card} key={provider.pid}>
-          <div className={styles.providerImage}><img src={provider.image} alt={provider.title}/><span>KHUB service listing</span></div>
-          <div className={styles.cardBody}><p className={styles.providerMeta}>{provider.category}</p><h2>{provider.title}</h2><p>{provider.location} · {provider.provider}</p><p>{provider.description}</p><strong>{provider.price > 0 ? money(provider.price) : 'Contact provider'}</strong><div className={styles.providerMeta}><button className={styles.viewLink} onClick={()=>onNavigate?.('messages')}>Message provider</button><button className={styles.viewLink} onClick={()=>onNavigate?.('orders-bookings')}>View bookings</button></div></div>
+          <img className={styles.providerImage} src={provider.image} alt={provider.title}/>
+          <div className={styles.cardBody}><p className={styles.verified}>Live KHUB listing · {provider.category}</p><h2>{provider.title}</h2><p>{provider.location} · {provider.provider}</p><p>{provider.description}</p><p className={styles.price}>{provider.price > 0 ? money(provider.price) : 'Contact provider'}</p><div className={styles.providerMeta}><button className={styles.viewLink} onClick={()=>onNavigate?.('messages')}>Message provider</button><button className={styles.viewLink} onClick={()=>onNavigate?.('orders-bookings')}>View bookings</button></div></div>
         </article>)}{providers.length===0&&<div className={styles.empty}>No active service listings match your search.</div>}</div>}
       </section>
     </div>
