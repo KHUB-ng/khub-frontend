@@ -49,7 +49,7 @@ export default function JobPosterDashboard({user={},onNavigate=()=>{}}) {
     else if(['Interviews','Talent shortlist','Team access','Billing'].includes(item))setNotice(item+' is not yet available as a dedicated backend workflow.');
   };
   const counts={
-    New:applications.filter(a=>['submitted','new'].includes(String(a.status).toLowerCase())).length,
+    New:applications.filter(a=>['applied'].includes(String(a.status).toLowerCase())).length,
     Review:applications.filter(a=>['viewed','in_review'].includes(String(a.status).toLowerCase())).length,
     Shortlisted:applications.filter(a=>String(a.status).toLowerCase()==='shortlisted').length,
     Hired:applications.filter(a=>String(a.status).toLowerCase()==='hired').length,
@@ -57,7 +57,7 @@ export default function JobPosterDashboard({user={},onNavigate=()=>{}}) {
   };
   const visible=applications.filter(a=>{
     const s=String(a.status||'').toLowerCase();
-    return tab==='New'?['submitted','new'].includes(s):tab==='Review'?['viewed','in_review'].includes(s):s===tab.toLowerCase();
+    return tab==='New'?['applied'].includes(s):tab==='Review'?['viewed','in_review'].includes(s):s===tab.toLowerCase();
   });
 
   return <div className={styles.shell}>
