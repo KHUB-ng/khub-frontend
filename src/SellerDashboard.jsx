@@ -1,40 +1,77 @@
-import React, { useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import styles from './SellerDashboard.module.css';
+import { api } from './lib/api.js';
 
-const orders = [
-  { id: 'KH-10482', item: 'Lounge chair ×1', amount: '₦145,000', target: '13 Oct', status: 'Preparing', action: 'Print packing slip' },
-  { id: 'KH-10470', item: 'Side table ×2', amount: '₦96,000', target: 'Today', status: 'Ready', action: 'Confirm dispatch' },
-  { id: 'KH-10466', item: 'Reading lamp ×1', amount: '₦32,000', target: 'Today', status: 'Address check', action: 'Contact buyer' },
-];
-const inventory = [
-  { name: 'The Lekki lounge chair', sku: 'SN-CH-01', stock: 6, visibility: '✓ Live', price: '₦145,000', action: 'Edit / stock' },
-  { name: 'Walnut side table', sku: 'SN-TB-02', stock: 1, visibility: '! Low stock', price: '₦48,000', action: 'Restock' },
-  { name: 'Reading lamp', sku: 'SN-LP-03', stock: 2, visibility: 'Advertised', price: '₦32,000', action: 'Edit promotion' },
-];
-export default function SellerDashboard({ user, onNavigate, onLogout = () => onNavigate?.('account') }) {
- const [stock,setStock] = useState(inventory.map(x=>x.stock));
- const [notice,setNotice] = useState('');
- const [showStock,setShowStock] = useState(false);
- const [selected,setSelected] = useState(1);
- const [quantity,setQuantity] = useState('');
- const [tab,setTab] = useState('Overview');
- const nav=['Overview','Inventory','Orders','Fulfilment','Storefront','Promotions','Revenue & payouts','Messages','Notifications','Verification','Support','Settings'];
- const handleNav=(item)=>{setTab(item); if(item==='Settings' || item==='Verification') onNavigate?.('settings'); else if(item==='Storefront' || item==='Promotions') onNavigate?.('storefront'); else if(item==='Support') onNavigate?.('support'); else if(item==='Notifications') onNavigate?.('notifications'); else if(item==='Messages') onNavigate?.('messages'); else if(item==='Orders' || item==='Fulfilment') onNavigate?.('orders'); else if(item==='Revenue & payouts') onNavigate?.('wallet'); else if(item==='Inventory') onNavigate?.('seller-listing'); else if(item!=='Overview') setNotice(`${item} selected — this demo view keeps your overview visible.`); else setNotice('');};
- const saveStock=()=>{const n=Number(quantity);if(quantity===''||!Number.isInteger(n)||n<0){setNotice('Enter a valid stock quantity (zero or more).');return;}setStock(prev=>prev.map((v,i)=>i===selected?n:v));setNotice('Stock quantity updated.');setShowStock(false);setQuantity('');};
- return <div className={styles.shell}>
-  <aside className={styles.sidebar}>{nav.map((item,i)=><button key={item} onClick={()=>handleNav(item)} className={tab===item?styles.activeNav:styles.navItem}>{i===0?'◉ ':''}{item}</button>)}</aside>
-  <main className={styles.main}>
-   <button type="button" className={styles.dashboardLogout} onClick={onLogout}>↪ Log out</button>
-   <header className={styles.heading}><h1>Make room for good business.</h1><p>08 Role workspaces / Seller dashboard<br/>{user?.storeName || 'Studio Nook'} · Lekki, Lagos · Seller workspace · 11 Oct 2026</p></header>
-   <section className={styles.stats}>{[['₦1.84m','Revenue · Oct','Gross paid sales · +12%'],['8','To fulfil','3 dispatches due today'],['24','Live listings','2 low-stock items'],['₦145,000','Pending payout','Held until delivery accepted']].map(([v,l,s])=><article className={styles.stat} key={l}><strong>{v}</strong><span>{l}</span><small>{s}</small></article>)}</section>
-   <div className={styles.columns}><div className={styles.left}>
-    <section className={styles.card}><h2>Revenue this week · ₦620,000</h2><div className={styles.chart} aria-label="Illustrative weekly revenue bar chart">{[34,57,45,79,64,100,77].map((h,i)=><div className={styles.barWrap} key={i}><div className={styles.bar} style={{height:`${h}%`}}/><span>{['M','T','W','T','F','S','S'][i]}</span></div>)}</div><p className={styles.note}>5–11 Oct · Gross revenue before refunds and fees · Illustrative values</p></section>
-    <section className={styles.card}><h2>Fulfilment queue</h2>{orders.map(o=><div className={styles.order} key={o.id}><p>{o.id} · {o.item}</p><p>Amount: {o.amount}　/　Dispatch target: {o.target} · {o.status}　/　Action: <button className={styles.inlineLink} onClick={()=>setNotice(`${o.action} selected for ${o.id}.`)}>{o.action}</button></p></div>)}</section>
-   </div><aside className={styles.right}><section className={styles.card}><h2>Stock needs attention</h2><p>! 2 low-stock listings</p><p>Reading lamp · {stock[2]} units left</p><p>Walnut side table · {stock[1]} unit{stock[1]===1?'':'s'} left</p><button className={styles.primary} onClick={()=>{setSelected(1);setQuantity(String(stock[1]));setShowStock(true)}}>Update stock</button><button className={styles.inlineLink} onClick={()=>{setSelected(0);setQuantity(String(stock[0]));setShowStock(true)}}>Add inventory</button></section>
-    <section className={styles.card}><h2>Payout clarity</h2><h3>₦145,000 pending</h3><p>KH-10482 chair proceeds are not available until delivery and the acceptance window clear.</p><button className={styles.inlineLink} onClick={()=>setNotice('Settlement ledger opened — illustrative payout data only.')}>View settlement</button></section></aside></div>
-   <section className={styles.card + ' ' + styles.inventory}><h2>Inventory snapshot</h2>{inventory.map((item,i)=><div className={styles.inventoryRow} key={item.sku}><p>{item.name}</p><p>SKU / stock: {item.sku} · {stock[i]} unit{stock[i]===1?'':'s'}　/　Visibility: {item.visibility} · {item.price}　/　Manage: <button className={styles.inlineLink} onClick={()=>{setSelected(i);setQuantity(String(stock[i]));setShowStock(true)}}>{item.action}</button></p></div>)}</section>
-   {showStock&&<section className={styles.stockEditor}><h2>Update inventory</h2><label>Item<select value={selected} onChange={e=>{const i=Number(e.target.value);setSelected(i);setQuantity(String(stock[i]));}}>{inventory.map((it,i)=><option key={it.sku} value={i}>{it.name}</option>)}</select></label><label>Quantity<input type="number" min="0" value={quantity} onChange={e=>setQuantity(e.target.value)}/></label><button className={styles.primary} onClick={saveStock}>Save quantity</button><button className={styles.inlineLink} onClick={()=>setShowStock(false)}>Cancel</button></section>}
-   <section className={styles.alert}><p>State example · {notice?'Stock update status':'Stock update failed'}</p><p>{notice || "We couldn't save the new quantity. The entered value is retained; retry before promising dispatch."}</p><button className={styles.inlineLink} onClick={()=>{if(showStock)saveStock();else setNotice('Retry requested. Please update the stock quantity if needed.')}}>{notice?'Dismiss / continue':'Retry stock update'}</button></section>
-  </main>
- </div>;
+const money = kobo => '₦' + (Number(kobo||0)/100).toLocaleString('en-NG',{maximumFractionDigits:2});
+const rows = value => Array.isArray(value)?value:(value?.items||[]);
+
+export default function SellerDashboard({ user, onNavigate, onLogout=()=>onNavigate?.('account') }) {
+  const [listings,setListings]=useState([]);
+  const [orders,setOrders]=useState([]);
+  const [wallet,setWallet]=useState(null);
+  const [tab,setTab]=useState('Overview');
+  const [loading,setLoading]=useState(true);
+  const [busy,setBusy]=useState('');
+  const [error,setError]=useState('');
+  const [notice,setNotice]=useState('');
+  const nav=['Overview','Inventory','Orders','Fulfilment','Storefront','Promotions','Revenue & payouts','Messages','Notifications','Verification','Support','Settings'];
+
+  const load=useCallback(async()=>{
+    setLoading(true);setError('');
+    try{
+      const [myListings,allOrders,walletSummary]=await Promise.all([api.get('/my/listings'),api.get('/orders'),api.get('/wallet/')]);
+      setListings(rows(myListings));
+      setOrders(rows(allOrders).filter(order=>order.seller_pid===user?.pid));
+      setWallet(walletSummary);
+    }catch(err){setError(err?.message||'Seller data could not be loaded.');}
+    finally{setLoading(false);}
+  },[user?.pid]);
+  useEffect(()=>{load();},[load]);
+
+  const handleNav=item=>{
+    setTab(item);
+    if(item==='Settings'||item==='Verification')onNavigate?.('settings');
+    else if(item==='Storefront')onNavigate?.('storefront');
+    else if(item==='Promotions')setNotice('Paid promotions are not available in the current backend API.');
+    else if(item==='Support')onNavigate?.('support');
+    else if(item==='Notifications')onNavigate?.('notifications');
+    else if(item==='Messages')onNavigate?.('messages');
+    else if(item==='Orders'||item==='Fulfilment')onNavigate?.('orders-bookings');
+    else if(item==='Revenue & payouts')onNavigate?.('wallet');
+    else if(item==='Inventory')onNavigate?.('seller-listing');
+    else setNotice('');
+  };
+
+  const markDelivered=async order=>{
+    if(!window.confirm('Confirm that this order has actually been dispatched or delivered according to your order terms?'))return;
+    setBusy(order.pid);setError('');setNotice('');
+    try{await api.post('/orders/'+encodeURIComponent(order.pid)+'/deliver',{});setNotice('Order delivery status updated by KHUB.');await load();}
+    catch(err){setError(err?.message||'Order could not be marked as delivered.');}
+    finally{setBusy('');}
+  };
+
+  const activeOrders=orders.filter(order=>['paid_escrow','delivered','dispute_open'].includes(order.status));
+  const revenue=orders.filter(order=>order.status==='completed').reduce((sum,order)=>sum+Number(order.seller_net_kobo||0),0);
+  const escrow=activeOrders.reduce((sum,order)=>sum+Number(order.seller_net_kobo||0),0);
+  const liveListings=listings.filter(item=>['active','live','published'].includes(String(item.status||'').toLowerCase()));
+
+  return <div className={styles.shell}>
+    <aside className={styles.sidebar}>{nav.map((item,i)=><button key={item} onClick={()=>handleNav(item)} className={tab===item?styles.activeNav:styles.navItem}>{i===0?'◉ ':''}{item}</button>)}</aside>
+    <main className={styles.main}>
+      <button type="button" className={styles.dashboardLogout} onClick={onLogout}>↪ Log out</button>
+      <header className={styles.heading}><h1>Make room for good business.</h1><p>08 Role workspaces / Seller dashboard<br/>{user?.name||'Seller account'} · Live seller workspace</p></header>
+      {loading&&<p>Loading seller data…</p>}{error&&<p className={styles.alert} role="alert">{error}</p>}{notice&&<p className={styles.alert} role="status">{notice}</p>}
+      <section className={styles.stats}>
+        {[[money(revenue),'Settled seller net','Completed orders after commission'],[activeOrders.length,'Orders in progress','Paid or awaiting completion'],[liveListings.length,'Live listings','Published marketplace listings'],[money(escrow),'Seller net in escrow','Not available until completion']].map(([value,label,description])=><article className={styles.stat} key={label}><strong>{value}</strong><span>{label}</span><small>{description}</small></article>)}
+      </section>
+      <div className={styles.columns}><div className={styles.left}>
+        <section className={styles.card}><h2>Seller wallet</h2><h3>{wallet?.balance_display||money(wallet?.balance_kobo)}</h3><p>Available wallet balance from the backend ledger. Withdrawals require verified KYC and approved payout requests.</p><button className={styles.inlineLink} onClick={()=>onNavigate?.('wallet')}>Open wallet and payouts</button></section>
+        <section className={styles.card}><h2>Fulfilment queue</h2>{activeOrders.map(order=><div className={styles.order} key={order.pid}><p>{order.pid} · {order.listing_title} × {order.quantity}</p><p>Gross {order.amount_display||money(order.amount_kobo)} · Commission {money(order.commission_kobo)} · Seller net {money(order.seller_net_kobo)} · {order.status}</p>{order.status==='paid_escrow'&&<button className={styles.inlineLink} disabled={busy===order.pid} onClick={()=>markDelivered(order)}>{busy===order.pid?'Updating…':'Mark dispatched / delivered'}</button>}</div>)}{!loading&&activeOrders.length===0&&<p>No orders are awaiting fulfilment.</p>}</section>
+      </div><aside className={styles.right}>
+        <section className={styles.card}><h2>Inventory snapshot</h2>{listings.slice(0,6).map(item=><div className={styles.inventoryRow} key={item.pid}><p>{item.title}</p><p>{item.category||item.vertical} · {item.status} · {item.price_display||money(item.price_kobo)}</p></div>)}{!loading&&listings.length===0&&<p>You have not published a listing yet.</p>}<button className={styles.primary} onClick={()=>onNavigate?.('seller-listing')}>Create a listing</button></section>
+        <section className={styles.card}><h2>Account verification</h2><p>Check your seller KYC status and upload any documents requested by KHUB.</p><button className={styles.inlineLink} onClick={()=>onNavigate?.('settings')}>Open verification settings</button></section>
+      </aside></div>
+      <section className={styles.alert}><p>Live seller data</p><p>Order totals, commission and seller net are returned by the backend. Inventory stock editing, paid promotions and advanced revenue charts are not shown as completed until their APIs are available.</p><button className={styles.inlineLink} onClick={load}>Refresh seller data</button></section>
+    </main>
+  </div>;
 }
