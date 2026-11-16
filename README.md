@@ -14,7 +14,7 @@ React 19 + Vite 8 frontend for the KHUB marketplace and role workspaces. The int
 
 | Variable | Purpose |
 | --- | --- |
-| `VITE_API_BASE_URL` | Public API origin including the `/api` prefix; defaults to `https://api.khub.com.ng/api` |
+| `VITE_API_BASE_URL` | Required for deployed builds; local development defaults to `http://localhost:5150/api` |
 | `VITE_GOOGLE_CLIENT_ID` | Google Identity Services OAuth web client ID; public identifier only |
 
 Never put Flutterwave secret keys, Google client secrets, database credentials, R2 keys, JWT secrets or other private credentials in any `VITE_*` variable. Those belong in the backend hosting environment.
@@ -24,7 +24,7 @@ Never put Flutterwave secret keys, Google client secrets, database credentials, 
 1. In Cloudflare Pages, set the project root directory to `/` (the Vite `package.json` is at the repository root).
 2. Set the build command to `npm ci && npm run build` and the build output directory to `dist`.
 3. Set `NODE_VERSION=22.12.0` in the Pages build environment. `.nvmrc` and `.node-version` also pin this compatible Node release.
-4. Add `VITE_API_BASE_URL` and `VITE_GOOGLE_CLIENT_ID` to the Pages environment settings for each environment.
+4. Set `VITE_API_BASE_URL` to the staging API for the temporary Pages deployment and set `VITE_GOOGLE_CLIENT_ID` to the matching public OAuth web client ID. Do not let a preview build silently call the live API.
 5. Configure the matching frontend origin in backend CORS and in the Google OAuth authorised JavaScript origins.
 6. The `public/_redirects` file provides the SPA fallback. `wrangler.toml` declares the Pages output directory.
 
