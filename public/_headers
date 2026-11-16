@@ -1,4 +1,7 @@
-https://*.khub-frontend.pages.dev/*
+https://khub-frontend.pages.dev/*
+  X-Robots-Tag: noindex
+
+https://:version.khub-frontend.pages.dev/*
   X-Robots-Tag: noindex
 
 /*
