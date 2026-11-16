@@ -1,5 +1,6 @@
-const DEFAULT_API_BASE_URL = 'https://api.khub.com.ng/api';
+const DEFAULT_API_BASE_URL = import.meta.env?.DEV ? 'http://localhost:5150/api' : '';
 const API_BASE_URL = (import.meta.env?.VITE_API_BASE_URL || DEFAULT_API_BASE_URL).replace(/\/+$/, '');
+const API_CONFIGURATION_ERROR = 'KHUB API is not configured for this deployment. Set VITE_API_BASE_URL to the intended staging API base URL.';
 
 const ACCESS_TOKEN_KEY = 'khub.access_token';
 const REFRESH_TOKEN_KEY = 'khub.refresh_token';
@@ -83,6 +84,8 @@ async function refreshSession() {
 }
 
 export async function apiRequest(path, options = {}) {
+  if (!API_BASE_URL) throw new ApiError(API_CONFIGURATION_ERROR, { code: 'API_NOT_CONFIGURED' });
+
   const {
     auth = true,
     retryOnUnauthorized = true,
@@ -131,5 +134,6 @@ export const api = {
 };
 
 export function apiUrl(path) {
+  if (!API_BASE_URL) throw new Error(API_CONFIGURATION_ERROR);
   return `${API_BASE_URL}${path.startsWith('/') ? path : `/${path}`}`;
 }
